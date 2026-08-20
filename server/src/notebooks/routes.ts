@@ -1,0 +1,148 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import { prisma } from '../db.js';
+import { limits } from '../config.js';
+import { asyncHandler } from '../http/asyncHandler.js';
+import { parseBody, parseParams, parseQuery, uuidParam } from '../http/validate.js';
+import { currentUserId } from '../auth/middleware.js';
+import { requireNotebook } from '../data/notebookAccess.js';
+
+export const notebooksRouter = Router();
+
+const titleSchema = z.string().trim().min(1, 'darf nicht leer sein').max(120);
+
+const listQuerySchema = z.object({
+  take: z.coerce.number().int().min(1).max(limits.pagination.maxTake).default(limits.pagination.defaultTake),
+  cursor: z.string().uuid().optional(),
+});
+
+const idParams = uuidParam('notebookId');
+
+/**
+ * Liste der eigenen Notebooks, cursor-paginiert.
+ *
+ * Kein `findMany` ohne `take`: eine unbegrenzte Liste wird genau an dem Tag zum
+ * Problem, an dem ein Nutzer viele Notebooks hat - und bis dahin faellt sie
+ * niemandem auf. Cursor statt Offset, weil `OFFSET n` die Datenbank zwingt, n
+ * Zeilen zu lesen und wegzuwerfen.
+ *
+ * `_count` statt einer zweiten Abfrage je Notebook - sonst waere die Liste eine
+ * N+1-Abfrage.
+ */
+notebooksRouter.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    const userId = currentUserId(req);
+    const { take, cursor } = parseQuery(listQuerySchema, req);
+
+    const rows = await prisma.notebook.findMany({
+      where: { userId },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: take + 1, // eine Zeile mehr, um "gibt es noch mehr?" zu beantworten
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: { select: { sources: true } },
+      },
+    });
+
+    const hasMore = rows.length > take;
+    const notebooks = (hasMore ? rows.slice(0, take) : rows).map((n) => ({
+      id: n.id,
+      title: n.title,
+      createdAt: n.createdAt,
+      updatedAt: n.updatedAt,
+      sourceCount: n._count.sources,
+    }));
+
+    res.json({
+      notebooks,
+      nextCursor: hasMore ? (notebooks.at(-1)?.id ?? null) : null,
+    });
+  }),
+);
+
+notebooksRouter.post(
+  '/',
+  asyncHandler(async (req, res) => {
+    const userId = currentUserId(req);
+    const { title } = parseBody(z.object({ title: titleSchema }), req);
+    // `userId` kommt aus dem Token, nie aus dem Body.
+    const notebook = await prisma.notebook.create({
+      data: { userId, title },
+      select: { id: true, title: true, createdAt: true, updatedAt: true },
+    });
+    res.status(201).json({ notebook });
+  }),
+);
+
+notebooksRouter.get(
+  '/:notebookId',
+  asyncHandler(async (req, res) => {
+    const { notebookId } = parseParams(idParams, req);
+    const notebook = await requireNotebook(notebookId, currentUserId(req));
+
+    // Quellen ueber `notebookId` - nicht ueber eigene IDs. Siehe notebookAccess.ts.
+    const sources = await prisma.source.findMany({
+      where: { notebookId: notebook.id },
+      orderBy: { createdAt: 'asc' },
+      take: limits.source.maxPerNotebook,
+      // `content` und `fileData` bleiben draussen: die Liste wuerde sonst
+      // mehrere Megabyte gross, obwohl die Oberflaeche nur Titel und Status zeigt.
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        originalUrl: true,
+        status: true,
+        error: true,
+        chunkCount: true,
+        selected: true,
+        sizeBytes: true,
+        createdAt: true,
+      },
+    });
+
+    res.json({
+      notebook: {
+        id: notebook.id,
+        title: notebook.title,
+        createdAt: notebook.createdAt,
+        updatedAt: notebook.updatedAt,
+      },
+      sources,
+    });
+  }),
+);
+
+notebooksRouter.patch(
+  '/:notebookId',
+  asyncHandler(async (req, res) => {
+    const { notebookId } = parseParams(idParams, req);
+    const userId = currentUserId(req);
+    const { title } = parseBody(z.object({ title: titleSchema }), req);
+
+    await requireNotebook(notebookId, userId);
+    const notebook = await prisma.notebook.update({
+      where: { id: notebookId },
+      data: { title },
+      select: { id: true, title: true, createdAt: true, updatedAt: true },
+    });
+    res.json({ notebook });
+  }),
+);
+
+notebooksRouter.delete(
+  '/:notebookId',
+  asyncHandler(async (req, res) => {
+    const { notebookId } = parseParams(idParams, req);
+    await requireNotebook(notebookId, currentUserId(req));
+    // Quellen, Abschnitte und Nachrichten haengen per onDelete: Cascade dran -
+    // die Datenbank raeumt auf, nicht der Anwendungscode.
+    await prisma.notebook.delete({ where: { id: notebookId } });
+    res.status(204).end();
+  }),
+);
