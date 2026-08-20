@@ -1,0 +1,26 @@
+# Lokale Entwicklungsdatenbank fuer dieses Projekt.
+# Bewusst eigener Container, eigener Port und eigenes Volume: dieses Projekt
+# teilt sich keine Infrastruktur mit irgendetwas anderem auf diesem Rechner.
+services:
+  notebooklm-postgres:
+    image: postgres:16-alpine
+    container_name: notebooklm-clone-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: notebooklm
+      POSTGRES_PASSWORD: notebooklm_local_dev
+      POSTGRES_DB: notebooklm
+    ports:
+      # 55432 statt 5432, damit ein bereits laufendes Postgres nicht kollidiert
+      - "55432:5432"
+    volumes:
+      - notebooklm-clone-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notebooklm -d notebooklm"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  notebooklm-clone-pgdata:
+    name: notebooklm-clone-pgdata

@@ -16,3 +16,6 @@ build/
 npm-debug.log*
 coverage/
 .DS_Store
+
+# Prisma erzeugter Client
+server/src/generated/
