@@ -1,0 +1,106 @@
+// Datenmodell des NotebookLM-Klons.
+//
+// TRENNLINIE ZWISCHEN NUTZERN: `userId` steht ausschliesslich am Notebook.
+// Quellen, Abschnitte und Nachrichten tragen bewusst KEIN `userId` - sie erben
+// die Trennung ueber ihr Notebook. Daraus folgt eine Regel, die im gesamten
+// Zugriffspfad diszipliniert eingehalten wird (siehe src/data/notebookAccess.ts):
+//
+//   Erst das Notebook gegen `userId` aufloesen, dann Kindobjekte ueber
+//   `notebookId` einschraenken. Niemals eine Quelle, einen Abschnitt oder eine
+//   Nachricht direkt ueber die eigene ID laden.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String
+  createdAt    DateTime   @default(now())
+  notebooks    Notebook[]
+}
+
+model Notebook {
+  id        String   @id @default(uuid())
+  userId    String // Trennlinie zwischen Nutzern; jede Abfrage geht darueber
+  title     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sources  Source[]
+  messages Message[]
+  chunks   Chunk[]
+
+  // Listenabfrage ist immer (userId, createdAt desc) -> zusammengesetzter Index.
+  @@index([userId, createdAt])
+}
+
+model Source {
+  id          String   @id @default(uuid())
+  notebookId  String
+  title       String
+  type        String // "pdf" | "text" | "url"
+  originalUrl String?
+  content     String   @db.Text // extrahierter Volltext - Grundlage der Zeichen-Positionen
+  fileData    Bytes? // Original-PDF; bewusst in der DB, siehe README
+  sizeBytes   Int
+  status      String   @default("pending") // pending | processing | ready | failed
+  error       String?
+  chunkCount  Int      @default(0)
+  selected    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  notebook Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  chunks   Chunk[]
+
+  @@index([notebookId])
+}
+
+model Chunk {
+  id         String  @id @default(uuid())
+  sourceId   String
+  notebookId String // denormalisiert: die Aehnlichkeitssuche filtert immer danach
+  index      Int
+  content    String  @db.Text
+  charStart  Int // Position im Volltext der Quelle - traegt die Zitatfunktion
+  charEnd    Int
+  page       Int?
+  tokenCount Int
+  embedding  Float[] // exakter Durchlauf statt Vektor-Index; Begruendung + Messung im README
+
+  source   Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  notebook Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+
+  @@index([notebookId])
+  @@index([sourceId])
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  notebookId String
+  role       String // "user" | "assistant"
+  content    String   @db.Text
+  citations  Json? // [{ marker, chunkId, sourceId, sourceTitle, charStart, charEnd, snippet }]
+  createdAt  DateTime @default(now())
+
+  notebook Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+
+  @@index([notebookId, createdAt])
+}
+
+// Embedding-Cache. Liegt in der Datenbank und nicht im Prozessspeicher, damit
+// mehrere Instanzen ihn teilen (Abschnitt "Skalierbarkeit" im README).
+// Schluessel ist ein SHA-256 ueber Modellname + Text.
+model EmbeddingCache {
+  hash      String   @id
+  model     String
+  embedding Float[]
+  createdAt DateTime @default(now())
+}
