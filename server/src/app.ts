@@ -10,6 +10,7 @@ import { requireAuth } from './auth/middleware.js';
 import { notebooksRouter } from './notebooks/routes.js';
 import { sourcesRouter } from './sources/routes.js';
 import { chatRouter } from './chat/routes.js';
+import { notesRouter } from './notes/routes.js';
 
 export function createApp() {
   const app = express();
@@ -68,6 +69,7 @@ export function createApp() {
   app.use('/api/notebooks', requireAuth, notebooksRouter);
   app.use('/api/notebooks', requireAuth, sourcesRouter);
   app.use('/api/notebooks', requireAuth, chatRouter);
+  app.use('/api/notebooks', requireAuth, notesRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

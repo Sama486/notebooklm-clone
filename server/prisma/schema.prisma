@@ -37,6 +37,7 @@ model Notebook {
   sources  Source[]
   messages Message[]
   chunks   Chunk[]
+  notes    Note[]
 
   // Listenabfrage ist immer (userId, createdAt desc) -> zusammengesetzter Index.
   @@index([userId, createdAt])
@@ -122,4 +123,26 @@ model LoginAttempt {
 
   // Für das Aufräumen abgelaufener Fenster.
   @@index([expiresAt])
+}
+
+// Eine gespeicherte Notiz - meist eine Antwort, die der Nutzer behalten will.
+//
+// Trägt wie Quellen und Nachrichten KEIN userId: die Trennung wird über das
+// Notebook geerbt. Der Zugriffspfad ist derselbe wie überall - erst Notebook
+// gegen userId auflösen, dann über notebookId einschränken.
+model Note {
+  id         String   @id @default(uuid())
+  notebookId String
+  title      String
+  content    String   @db.Text
+  // Die Belege der gespeicherten Antwort, damit die Chips auch in der Notiz
+  // anklickbar bleiben. Gleiche Form wie bei Message.
+  citations  Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  notebook Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+
+  // Die Liste wird immer als (notebookId, createdAt desc) abgefragt.
+  @@index([notebookId, createdAt])
 }
