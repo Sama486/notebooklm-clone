@@ -1,5 +1,6 @@
 import { limits } from '../config.js';
 import { logger } from '../logger.js';
+import { sseTextChunks } from './sse.js';
 import { AiError, type AiClient, type ChatRequest } from './types.js';
 
 /**
@@ -140,51 +141,9 @@ async function* streamChat(apiKey: string, request: ChatRequest): AsyncIterable<
   if (!response.ok) throw await toAiError(response);
   if (!response.body) throw new AiError('Keine Antwort vom Modell erhalten.', true);
 
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  for await (const part of response.body as unknown as AsyncIterable<Uint8Array>) {
-    // `stream: true` ist wichtig: ein Mehrbyte-Zeichen kann zwischen zwei
-    // Netzpaketen zerrissen sein. Ohne das entstuende an der Bruchstelle ein
-    // Ersatzzeichen mitten in einem Umlaut.
-    buffer += decoder.decode(part, { stream: true });
-
-    // SSE trennt Ereignisse durch eine Leerzeile. Ein unvollstaendiges
-    // Ereignis am Pufferende bleibt stehen, bis der Rest kommt.
-    const events = buffer.split('\n\n');
-    buffer = events.pop() ?? '';
-
-    for (const event of events) {
-      const text = textFromEvent(event);
-      if (text) yield text;
-    }
-  }
-
-  const text = textFromEvent(buffer);
-  if (text) yield text;
-}
-
-function textFromEvent(event: string): string {
-  const payload = event
-    .split('\n')
-    .filter((line) => line.startsWith('data:'))
-    .map((line) => line.slice('data:'.length).trim())
-    .join('');
-
-  if (!payload || payload === '[DONE]') return '';
-
-  try {
-    const parsed = JSON.parse(payload) as {
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
-    };
-    const parts = parsed.candidates?.[0]?.content?.parts ?? [];
-    return parts.map((part) => part.text ?? '').join('');
-  } catch {
-    // Ein unlesbares Ereignis beendet den Stream nicht - der Rest der Antwort
-    // ist immer noch brauchbar.
-    logger.warn('Unlesbares Ereignis im Modell-Stream verworfen');
-    return '';
-  }
+  // Das Zerlegen des Ereignisstroms steckt in sse.ts - dort ist es ohne Netz
+  // testbar, und genau dort sitzen die Fallen (Zeilenenden, Paketgrenzen).
+  yield* sseTextChunks(response.body as unknown as AsyncIterable<Uint8Array>);
 }
 
 // ---------------------------------------------------------------------------
