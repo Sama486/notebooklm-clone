@@ -75,12 +75,16 @@ export const limits = {
     minTokens: 40, // kleinere Reste werden an den Vorgänger angehängt
   },
 
+  // Gilt fuer jeden Aufruf des KI-Dienstes, Embeddings wie Chat.
+  ai: {
+    maxRetries: 4,
+    baseRetryDelayMs: 500,
+  },
+
   embedding: {
     model: 'gemini-embedding-001',
     dimensions: 768, // bewusst reduziert von 3072, siehe README (Skalierbarkeit)
     batchSize: 32,
-    maxRetries: 4,
-    baseRetryDelayMs: 500,
   },
 
   chat: {

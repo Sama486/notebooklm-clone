@@ -128,18 +128,29 @@ async function* streamChat(apiKey: string, request: ChatRequest): AsyncIterable<
     },
   };
 
-  const response = await fetch(
-    `${API_BASE}/models/${limits.chat.model}:streamGenerateContent?alt=sse`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify(body),
-      signal: request.signal,
-    },
-  );
-
-  if (!response.ok) throw await toAiError(response);
-  if (!response.body) throw new AiError('Keine Antwort vom Modell erhalten.', true);
+  /**
+   * Die Wiederholung umfasst NUR den Verbindungsaufbau, nicht das Ausliefern.
+   *
+   * Das ist die entscheidende Grenze: solange kein Byte beim Nutzer ist, kostet
+   * ein zweiter Versuch nichts. Sobald die ersten Woerter im Fenster stehen,
+   * waere ein Neuversuch sichtbar falsch - die Antwort finge mitten im Satz
+   * noch einmal von vorn an. Deshalb liegt der Aufruf in withRetry und die
+   * Schleife ueber die Pakete ausserhalb.
+   */
+  const response = await withRetry(async () => {
+    const attempt = await fetch(
+      `${API_BASE}/models/${limits.chat.model}:streamGenerateContent?alt=sse`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: JSON.stringify(body),
+        signal: request.signal,
+      },
+    );
+    if (!attempt.ok) throw await toAiError(attempt);
+    if (!attempt.body) throw new AiError('Keine Antwort vom Modell erhalten.', true);
+    return attempt;
+  });
 
   // Das Zerlegen des Ereignisstroms steckt in sse.ts - dort ist es ohne Netz
   // testbar, und genau dort sitzen die Fallen (Zeilenenden, Paketgrenzen).
@@ -172,17 +183,23 @@ async function toAiError(response: Response): Promise<AiError> {
 async function withRetry<T>(operation: () => Promise<T>): Promise<T> {
   let lastError: unknown;
 
-  for (let attempt = 0; attempt < limits.embedding.maxRetries; attempt += 1) {
+  for (let attempt = 0; attempt < limits.ai.maxRetries; attempt += 1) {
     try {
       return await operation();
     } catch (error) {
       lastError = error;
+
+      // Abbruch durch den Client ist keine Stoerung, sondern eine Entscheidung.
+      // Ohne diese Zeile wuerde ein geschlossener Browser-Tab noch vier weitere
+      // Anfragen an den KI-Dienst ausloesen - bezahlt und fuer niemanden.
+      if (error instanceof DOMException && error.name === 'AbortError') throw error;
+
       if (error instanceof AiError && !error.retryable) throw error;
 
-      const isLast = attempt === limits.embedding.maxRetries - 1;
+      const isLast = attempt === limits.ai.maxRetries - 1;
       if (isLast) break;
 
-      const delay = limits.embedding.baseRetryDelayMs * 2 ** attempt;
+      const delay = limits.ai.baseRetryDelayMs * 2 ** attempt;
       logger.warn('Wiederhole Anfrage an den KI-Dienst', { attempt: attempt + 1, delay });
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
