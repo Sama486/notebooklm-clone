@@ -1,7 +1,7 @@
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { addMissingScheme, fetchExternalUrl } from './safeFetch.js';
+import { addMissingScheme, fetchExternalUrl, pinnedLookup } from './safeFetch.js';
 
 /**
  * Die vier Fälle, die zählen, gegen einen echten lokalen HTTP-Server:
@@ -175,5 +175,46 @@ describe('Ergänzen eines fehlenden Schemas', () => {
   it('kommt mit leerer Eingabe zurecht', () => {
     expect(addMissingScheme('')).toBe('');
     expect(addMissingScheme('   ')).toBe('');
+  });
+});
+
+describe('An die Verbindung gebundene Namensauflösung', () => {
+  const pinned = { address: '93.184.216.34', family: 4 as const };
+
+  it('antwortet auf die Einzelform mit Adresse und Familie', () => {
+    let result: unknown[] = [];
+    pinnedLookup(pinned)('example.com', { all: false }, (...args) => {
+      result = args;
+    });
+    expect(result).toEqual([null, '93.184.216.34', 4]);
+  });
+
+  it('antwortet auf die Listenform mit einem Array', () => {
+    // GENAU DIESER FALL hatte die URL-Quelle stillgelegt. Seit Node 20 ist
+    // autoSelectFamily voreingestellt, also fragt net.connect mit all: true
+    // und erwartet ein Array. Wer nur die Einzelform bedient, bekommt
+    // "Invalid IP address: undefined" - und das sieht aus wie ein
+    // unerreichbarer Server, nicht wie ein Programmierfehler.
+    let result: unknown[] = [];
+    pinnedLookup(pinned)('example.com', { all: true }, (...args) => {
+      result = args;
+    });
+    expect(result).toEqual([null, [{ address: '93.184.216.34', family: 4 }]]);
+  });
+
+  it('behandelt fehlende Optionen wie die Einzelform', () => {
+    let result: unknown[] = [];
+    pinnedLookup(pinned)('example.com', undefined, (...args) => {
+      result = args;
+    });
+    expect(result).toEqual([null, '93.184.216.34', 4]);
+  });
+
+  it('gibt fuer IPv6 die Familie 6 zurueck', () => {
+    let result: unknown[] = [];
+    pinnedLookup({ address: '2606:4700::1', family: 6 })('example.com', { all: true }, (...a) => {
+      result = a;
+    });
+    expect(result).toEqual([null, [{ address: '2606:4700::1', family: 6 }]]);
   });
 });

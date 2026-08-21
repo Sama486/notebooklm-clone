@@ -111,6 +111,21 @@ async function main() {
     check(`SSRF abgewehrt: ${label}`, result.status === 400, `Status ${result.status}`);
   }
 
+  // --- URL-Quelle, die funktionieren MUSS ---------------------------------
+  // Die Ablehnungen oben beweisen nur, dass der Schutz greift. Dass ein
+  // erlaubter Abruf auch wirklich durchgeht, war lange ungeprueft - und genau
+  // dort steckte ein Fehler, der die URL-Quelle vollstaendig stillgelegt hat.
+  const echteSeite = await api(`/api/notebooks/${notebookId}/sources/url`, {
+    token: alice,
+    method: 'POST',
+    body: { url: 'example.com' },
+  });
+  check(
+    'oeffentliche URL wird abgerufen (ohne Schema eingegeben)',
+    echteSeite.status === 201,
+    echteSeite.status === 201 ? echteSeite.body.source.title : JSON.stringify(echteSeite.body),
+  );
+
   // --- Quelle einlesen ----------------------------------------------------
   const quelle = await api(`/api/notebooks/${notebookId}/sources/text`, {
     token: alice,

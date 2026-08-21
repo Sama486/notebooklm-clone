@@ -104,6 +104,35 @@ export function addMissingScheme(rawUrl: string): string {
   return `https://${trimmed}`;
 }
 
+/** Signatur, wie Node sie an `lookup` uebergibt. */
+type LookupCallback = (
+  error: NodeJS.ErrnoException | null,
+  address: string | LookupAddress[],
+  family?: number,
+) => void;
+
+/**
+ * Baut die `lookup`-Funktion, die immer die geprüfte Adresse zurückgibt.
+ *
+ * ZWEI AUFRUFFORMEN, und das Übersehen der zweiten hat die URL-Quelle
+ * stillgelegt: Node ruft `lookup` je nach Situation unterschiedlich auf.
+ *
+ * - `options.all === false`: erwartet `callback(null, adresse, familie)`.
+ * - `options.all === true`: erwartet `callback(null, [{ address, family }])`.
+ *
+ * Seit Node 20 ist `autoSelectFamily` (Happy Eyeballs) voreingestellt, und
+ * damit fragt `net.connect` mit `all: true`. Wer nur die erste Form bedient,
+ * bekommt "Invalid IP address: undefined" - der Verbindungsaufbau scheitert,
+ * bevor irgendein Byte fliesst. Der Fehler sieht dabei aus wie ein
+ * unerreichbarer Server, nicht wie ein Programmierfehler.
+ */
+export function pinnedLookup(pinned: LookupAddress) {
+  return (_hostname: string, options: { all?: boolean } | undefined, callback: LookupCallback) => {
+    if (options?.all) callback(null, [{ address: pinned.address, family: pinned.family }]);
+    else callback(null, pinned.address, pinned.family);
+  };
+}
+
 function parseAndCheckScheme(rawUrl: string): URL {
   let url: URL;
   try {
@@ -195,13 +224,7 @@ function requestOnce(url: URL, pinned: LookupAddress, deadline: number): Promise
          * Der Hostname bleibt in der URL stehen: TLS-Zertifikatsprüfung und
          * Host-Header beziehen sich weiter auf den Namen, nicht auf die IP.
          */
-        lookup: ((
-          _hostname: string,
-          _options: unknown,
-          callback: (err: null, address: string, family: number) => void,
-        ) => {
-          callback(null, pinned.address, pinned.family);
-        }) as never,
+        lookup: pinnedLookup(pinned) as never,
       },
       (response) => {
         const chunks: Buffer[] = [];
