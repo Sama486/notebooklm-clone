@@ -147,6 +147,7 @@ async function main() {
   let packets = 0;
   let firstPacketMs = 0;
   let answer = '';
+  let markerPositions = '';
   let citations = [];
 
   for await (const chunk of response.body) {
@@ -158,7 +159,12 @@ async function main() {
       try {
         const payload = JSON.parse(dataLine.slice(5).trim());
         if (payload.citations) citations = payload.citations;
-        if (typeof payload.text === 'string') answer += payload.text;
+        // Segmente statt eines Textfeldes: nur so ist bekannt, hinter welcher
+        // Aussage ein Beleg steht.
+        for (const segment of payload.segments ?? []) {
+          answer += segment.text;
+          markerPositions += segment.text + segment.markers.map((m) => `[${m}]`).join('');
+        }
       } catch {
         // Unvollstaendiges Ereignis an einer Paketgrenze - der naechste
         // Durchlauf enthaelt es vollstaendig.
@@ -178,6 +184,11 @@ async function main() {
     'Marker sind aus dem Antworttext entfernt',
     !/\[\d{1,3}\]/.test(answer),
     answer.slice(0, 80).replace(/\s+/g, ' '),
+  );
+  check(
+    'kein Leerzeichen vor dem Beleg',
+    !/ \[\d{1,3}\]/.test(markerPositions),
+    markerPositions.slice(-60).replace(/\s+/g, ' '),
   );
 
   // --- Beleg zeigt auf die richtige Stelle --------------------------------
