@@ -30,10 +30,14 @@ if (!apiKey) {
   process.exit(1);
 }
 
-// Kandidaten mit brauchbarem freiem Kontingent. gemini-3-flash-preview faellt
-// aus: die kostenlose Stufe erlaubt dort nur zwanzig Anfragen am Tag, was fuer
-// eine Demo und eine Messung nicht reicht.
-const MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash-lite'];
+// Kandidaten mit brauchbarem freiem Kontingent.
+//
+// Die grossen Flash-Modelle scheiden aus, bevor die Qualitaet ueberhaupt zur
+// Debatte steht: gemini-3-flash-preview und gemini-3.6-flash erlauben in der
+// kostenlosen Stufe zwanzig Anfragen AM TAG. Das reicht weder fuer diese
+// Messung noch fuer eine Demo. Gemessen, nicht vermutet - die 429-Antwort
+// nennt das Limit ausdruecklich.
+const MODELS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
 
 const PASSAGES = [
   'Passwoerter werden mit bcrypt und dem Kostenfaktor zwoelf gehasht. Zwoelf statt der verbreiteten zehn bedeutet viermal so viel Rechenzeit je Versuch und liegt fuer den anmeldenden Nutzer weiterhin unter einer viertel Sekunde.',

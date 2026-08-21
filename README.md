@@ -89,7 +89,7 @@ docker exec notebooklm-clone-postgres psql -U notebooklm -d notebooklm \
 ```bash
 cd server
 npx tsc --noEmit    # muss still bleiben
-npm test            # 122 Tests
+npm test            # 162 Tests
 npm run measure     # Messung der Ähnlichkeitssuche (Tabelle weiter unten)
 
 cd ../web
@@ -152,7 +152,8 @@ eingegebene URLs ab. Drei echte Angriffsflächen.
 |---|---|
 | bcrypt mit Kostenfaktor **12** statt der verbreiteten 10 | [`auth/password.ts`](server/src/auth/password.ts) |
 | JWT mit **explizit gesetztem Algorithmus** beim Verifizieren | [`auth/tokens.ts`](server/src/auth/tokens.ts) |
-| Rate-Limit auf Registrierung und Anmeldung | [`http/rateLimit.ts`](server/src/http/rateLimit.ts) |
+| Rate-Limit auf die Anmeldung, mit Zähler in der Datenbank (siehe Skalierbarkeit) | [`auth/loginThrottle.ts`](server/src/auth/loginThrottle.ts) |
+| Rate-Limit auf Registrierung, Chat und Einlesen | [`http/rateLimit.ts`](server/src/http/rateLimit.ts) |
 | Gleiche Antwort **und gleiche Rechenzeit** bei falschem Passwort und unbekannter E-Mail | [`auth/routes.ts`](server/src/auth/routes.ts), [`auth/password.ts`](server/src/auth/password.ts) |
 | Zugangsdaten Zod-validiert wie jede andere Eingabe | [`auth/schemas.ts`](server/src/auth/schemas.ts) |
 
@@ -326,12 +327,47 @@ Der Verarbeitungsstatus einer Quelle steht in der **Datenbank**, nicht in einer 
 einen Neustart, und eine zweite Instanz sieht denselben Zustand. Der Embedding-Cache liegt aus
 demselben Grund in der Datenbank.
 
-**Eine benannte Ausnahme:** Die Rate-Limit-Zähler liegen im Prozessspeicher
-([`http/rateLimit.ts`](server/src/http/rateLimit.ts)). Bei zwei Instanzen hinter einem Lastverteiler
-zählt jede für sich — das effektive Limit verdoppelt sich, und nach einem Neustart ist der Zähler
-leer. Für diesen Betrieb (eine Instanz) ist das tragbar und steht als Kommentar an der Stelle. Der
-Umbau ist lokal begrenzt: `express-rate-limit` nimmt einen Store, ein Redis-Store wäre ein
-Konstruktorargument in genau dieser Datei.
+**Die Rate-Limit-Zähler** liegen im Prozessspeicher
+([`http/rateLimit.ts`](server/src/http/rateLimit.ts)). Das stand zunächst als bewusste
+Vereinfachung mit der Annahme „eine Instanz" im Code — bis die Annahme gemessen wurde.
+
+#### Die gemessene Annahme, die sich als falsch herausstellte
+
+Dreizehn Anmeldeversuche gegen die laufende Installation hätten nach dem zehnten ein 429 ergeben
+müssen. Es kam keines. Ein Blick in die Antwortköpfe zeigte, warum:
+
+```
+1: ratelimit: limit=10, remaining=9, reset=900
+2: ratelimit: limit=10, remaining=5, reset=818
+3: ratelimit: limit=10, remaining=5, reset=814
+4: ratelimit: limit=10, remaining=8, reset=860
+```
+
+**Unterschiedliche Fensterenden bei aufeinanderfolgenden Anfragen** — also mehrere voneinander
+unabhängige Zähler. Die Ein-Instanz-Annahme ist in der Produktion bereits falsch, ohne dass jemand
+je hochskaliert hätte. Ein Angreifer bekommt damit ein Vielfaches der zehn erlaubten Versuche.
+
+Bei einem Kostenlimit wäre das hinnehmbar. Beim Schutz gegen das Durchprobieren von Passwörtern ist
+es das nicht: **eine Schutzmaßnahme, die nicht wirkt, ist schlimmer als keine, weil sie Sicherheit
+vortäuscht.** Deshalb liegt der Zähler für die Anmeldung jetzt in der Datenbank
+([`auth/loginThrottle.ts`](server/src/auth/loginThrottle.ts)):
+
+- **Eine einzige SQL-Anweisung** erhöht und prüft den Zähler. Getrenntes Lesen und Schreiben ließe
+  gleichzeitige Versuche denselben alten Wert lesen und gemeinsam am Limit vorbeikommen — der Test
+  feuert deshalb zwanzig Versuche parallel ab und erwartet genau zehn Durchlässe.
+- **Schlüssel ist die E-Mail, nicht die IP.** Hinter Renders Proxy ist die Absender-IP nicht
+  verlässlich — genau das hat die Messung gezeigt. Die E-Mail ist ohnehin das, was geschützt werden
+  soll: das einzelne Konto.
+- **Offen benannter Preis:** Password Spraying über viele Konten mit je wenigen Passwörtern wird
+  davon nicht gebremst. Dagegen bräuchte es eine verlässliche Absenderkennung.
+
+Nach dem Umbau, wieder gegen die Produktion gemessen:
+`1:401 2:401 … 10:401 11:429 12:429 13:429`.
+
+Die übrigen Limits (Chat, Einlesen, Registrierung) bleiben im Prozessspeicher. Dort geht es um
+Kosten und Last, nicht um einen Angreifer, und die Verwässerung ist tragbar — jetzt aber als
+**gemessene** Aussage statt als Vermutung. Der Umbau bliebe lokal: `express-rate-limit` nimmt einen
+Store, ein Redis-Store wäre ein Konstruktorargument in genau dieser Datei.
 
 ### Teure Arbeit aus dem Request heraus
 
@@ -453,11 +489,13 @@ erklärbare Fehlermeldung statt eines Verbindungsabbruchs aus einer Zwischenschi
 - **Keine Leichen.** Kein auskommentierter Code, keine `TODO`s, keine `console.log`-Reste — ein
   zentrales Logging-Modul ([`logger.ts`](server/src/logger.ts)) statt verstreuter Ausgaben.
 
-### Tests: 122, dort wo die Fehler sitzen
+### Tests: 162, dort wo die Fehler sitzen
 
 | Bereich | Datei |
 |---|---|
 | Autorisierung (IDOR) | [`auth/authorization.test.ts`](server/src/auth/authorization.test.ts) |
+| Anmelde-Limit, inklusive zwanzig gleichzeitiger Versuche | [`auth/loginThrottle.test.ts`](server/src/auth/loginThrottle.test.ts) |
+| SSE-Zerlegung: Zeilenenden, Paketgrenzen, Mehrbyte-Zeichen | [`ai/sse.test.ts`](server/src/ai/sse.test.ts) |
 | JWT-Angriffe (`alg: none`, fremdes Geheimnis, fremder Aussteller, abgelaufen) | [`auth/tokens.test.ts`](server/src/auth/tokens.test.ts) |
 | Registrierung, Anmeldung, Konten-Aufzählung | [`auth/auth.test.ts`](server/src/auth/auth.test.ts) |
 | SSRF: die vier Fälle | [`net/safeFetch.test.ts`](server/src/net/safeFetch.test.ts) |
@@ -507,6 +545,30 @@ das die falsche Wahl; bei 15 MB Obergrenze ist es die einfachere.
 ein zusätzliches Konzept — für einen Vorteil, der erst bei deutlich höherem Aufkommen eintritt. Ein
 Hintergrundablauf plus Statusfeld in der Datenbank genügt und übersteht einen Neustart, weil der
 Zustand nicht im Prozess liegt.
+
+**Warum `gemini-3.5-flash-lite` als Chat-Modell.** Die Belege sind das Kernfeature, also wurde
+gemessen statt vermutet: zwanzig Fragen gegen dieselben zehn Textstellen, zwei Modelle, gezählt
+wurde, wie oft ein Marker fehlt, eine Nummer trägt, die es nicht gibt, oder mitten in einem Wort
+steht ([`scripts/compare-models.mjs`](scripts/compare-models.mjs)).
+
+| Modell | Beantwortet | Marker fehlt | Nummer erfunden | Marker im Wort | Denk-Token | Sekunden je Frage |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| gemini-3.5-flash-lite | 20/20 | 0/20 | 0/20 | 0/20 | 0 | 2,9 |
+| gemini-3.1-flash-lite | 20/20 | 0/20 | 0/20 | 0/20 | 0 | 3,2 |
+
+**Das ehrliche Ergebnis: die Markerqualität war nicht der Unterschied.** Beide Modelle setzen die
+Belege in allen zwanzig Fällen korrekt. Entschieden hat deshalb etwas anderes — und das ist
+ebenfalls gemessen:
+
+- **Kontingent.** `gemini-3-flash` gibt es unter diesem Namen nicht; die Preview-Variante und
+  `gemini-3.6-flash` erlauben in der kostenlosen Stufe **zwanzig Anfragen am Tag**. Das reicht weder
+  für eine Demo noch für diese Messung — die Modelle scheiden aus, bevor Qualität überhaupt zur
+  Debatte steht. (Die 429-Antwort der API nennt das Limit ausdrücklich.)
+- **Denkschritte.** `gemini-3.6-flash` verbrauchte für eine triviale Frage 413 Token für interne
+  Denkschritte und gab danach dieselbe 31-Token-Antwort wie das Lite-Modell mit null Denk-Token.
+  Bei einer Antwort, die ohnehin nur aus den mitgelieferten Textstellen bestehen darf, kostet das
+  Latenz und Geld ohne Gegenwert. Denkschritte werden zusätzlich aus dem Antwortstrom gefiltert
+  ([`ai/sse.ts`](server/src/ai/sse.ts)) — sie sind nicht die Antwort.
 
 **Warum ein multilinguales Embedding-Modell.** Die Demo-Dokumente sind deutsch. Englische
 Embedding-Ranglisten übertragen sich nicht auf Deutsch: englisch-optimierte Modelle zerlegen
