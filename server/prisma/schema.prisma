@@ -49,6 +49,9 @@ model Source {
   type        String // "pdf" | "text" | "url"
   originalUrl String?
   content     String   @db.Text // extrahierter Volltext - Grundlage der Zeichen-Positionen
+  // Zeichen-Positionen der Seitenanfaenge aus der PDF-Extraktion. Leer bei Text-
+  // und URL-Quellen, die keine Seiten haben. Traegt die Seitenzahl im Zitat.
+  pageBreaks  Int[]
   fileData    Bytes? // Original-PDF; bewusst in der DB, siehe README
   sizeBytes   Int
   status      String   @default("pending") // pending | processing | ready | failed
