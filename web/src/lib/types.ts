@@ -1,4 +1,4 @@
-/** Die Formen, die die API liefert. Eine Quelle der Wahrheit fuers Frontend. */
+/** Die Formen, die die API liefert. Eine Quelle der Wahrheit fürs Frontend. */
 
 export interface User {
   id: string;

@@ -49,19 +49,19 @@ describe('Registrierung und Anmeldung', () => {
   it('gibt bei falschem Passwort und unbekannter E-Mail dieselbe Antwort', async () => {
     const wrongPassword = await request(app)
       .post('/api/auth/login')
-      .send({ email, password: 'ein-voellig-falsches-passwort' });
+      .send({ email, password: 'ein-völlig-falsches-passwort' });
     const unknownEmail = await request(app)
       .post('/api/auth/login')
       .send({ email: 'gibtesnicht@example.test', password });
 
     expect(wrongPassword.status).toBe(401);
     expect(unknownEmail.status).toBe(401);
-    // Identisch bis aufs Zeichen - sonst laesst sich aus der Antwort ablesen,
+    // Identisch bis aufs Zeichen - sonst lässt sich aus der Antwort ablesen,
     // welche Adressen registriert sind.
     expect(unknownEmail.body).toEqual(wrongPassword.body);
   });
 
-  it('weist zu kurze Passwoerter und kaputte E-Mails ab', async () => {
+  it('weist zu kurze Passwörter und kaputte E-Mails ab', async () => {
     const shortPassword = await request(app)
       .post('/api/auth/register')
       .send({ email: 'neu@example.test', password: 'kurz' });
@@ -75,7 +75,7 @@ describe('Registrierung und Anmeldung', () => {
 
   it('ignoriert Felder, die nicht im Schema stehen', async () => {
     // Der Body wird nie als Ganzes an Prisma gereicht - Zod gibt nur die
-    // deklarierten Felder zurueck. Ein mitgeschicktes `id` hat keine Wirkung.
+    // deklarierten Felder zurück. Ein mitgeschicktes `id` hat keine Wirkung.
     const res = await request(app)
       .post('/api/auth/register')
       .send({

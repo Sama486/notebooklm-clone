@@ -7,8 +7,8 @@ import type { Citation, SourceWithContent } from '../lib/types.js';
  * Die rechte Spalte: zeigt eine Quelle im Volltext und hebt die zitierte
  * Stelle hervor.
  *
- * Der Volltext kommt unveraendert aus der Datenbank - genau der Text, auf den
- * sich `charStart` und `charEnd` beziehen. Wuerde er hier noch bereinigt oder
+ * Der Volltext kommt unverändert aus der Datenbank - genau der Text, auf den
+ * sich `charStart` und `charEnd` beziehen. Würde er hier noch bereinigt oder
  * umgebrochen, zeigte die Hervorhebung an die falsche Stelle.
  */
 
@@ -68,7 +68,7 @@ export function DocumentPanel({ notebookId, sourceId, citation, onClose }: Docum
     );
   }
 
-  // Nur hervorheben, wenn der Beleg auch zu der Quelle gehoert, die gerade
+  // Nur hervorheben, wenn der Beleg auch zu der Quelle gehört, die gerade
   // offen ist. Sonst zeigte eine alte Position in ein anderes Dokument.
   const highlight = citation && citation.sourceId === sourceId ? citation : null;
 
@@ -89,12 +89,12 @@ export function DocumentPanel({ notebookId, sourceId, citation, onClose }: Docum
             <a
               href={source.originalUrl}
               target="_blank"
-              // noopener/noreferrer: ohne das bekaeme die geoeffnete Seite ueber
+              // noopener/noreferrer: ohne das bekäme die geöffnete Seite über
               // window.opener Zugriff auf unseren Tab.
               rel="noopener noreferrer"
               className="text-xs text-sky-700 hover:underline"
             >
-              Original oeffnen
+              Original öffnen
             </a>
           )}
         </div>

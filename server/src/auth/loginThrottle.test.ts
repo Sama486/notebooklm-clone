@@ -7,12 +7,12 @@ import { resetDatabase } from '../test/helpers.js';
 import { cleanupExpiredAttempts, clearLoginAttempts, registerLoginAttempt } from './loginThrottle.js';
 
 /**
- * Anders als die uebrigen Rate-Limits wird dieses hier tatsaechlich getestet.
+ * Anders als die übrigen Rate-Limits wird dieses hier tatsächlich getestet.
  *
  * Die Limits aus http/rateLimit.ts sind im Testlauf abgeschaltet, weil sie
- * sonst die Testfaelle gegeneinander ausspielen wuerden. Beim Schutz gegen das
- * Durchprobieren von Passwoertern waere das die falsche Abwaegung: eine
- * Schutzmassnahme, die nie ausgefuehrt wird, ist keine.
+ * sonst die Testfälle gegeneinander ausspielen würden. Beim Schutz gegen das
+ * Durchprobieren von Passwörtern wäre das die falsche Abwägung: eine
+ * Schutzmaßnahme, die nie ausgeführt wird, ist keine.
  */
 describe('Begrenzung der Anmeldeversuche', () => {
   const max = limits.rateLimit.auth.max;
@@ -26,7 +26,7 @@ describe('Begrenzung der Anmeldeversuche', () => {
     await prisma.$disconnect();
   });
 
-  it('laesst die erlaubte Anzahl durch und blockt danach', async () => {
+  it('lässt die erlaubte Anzahl durch und blockt danach', async () => {
     const email = 'opfer@example.test';
 
     for (let attempt = 1; attempt <= max; attempt += 1) {
@@ -38,7 +38,7 @@ describe('Begrenzung der Anmeldeversuche', () => {
     });
   });
 
-  it('zaehlt je Konto getrennt', async () => {
+  it('zählt je Konto getrennt', async () => {
     // Ein ausgesperrtes Konto darf kein anderes aussperren.
     for (let attempt = 0; attempt <= max; attempt += 1) {
       await registerLoginAttempt('erstes@example.test').catch(() => undefined);
@@ -46,14 +46,14 @@ describe('Begrenzung der Anmeldeversuche', () => {
     await expect(registerLoginAttempt('zweites@example.test')).resolves.toBeUndefined();
   });
 
-  it('setzt nach erfolgreicher Anmeldung zurueck', async () => {
+  it('setzt nach erfolgreicher Anmeldung zurück', async () => {
     const email = 'vertipper@example.test';
     for (let attempt = 0; attempt < max; attempt += 1) await registerLoginAttempt(email);
 
     await clearLoginAttempts(email);
 
     // Wieder von vorn - wer sich vertippt und dann richtig anmeldet, ist beim
-    // naechsten Vertippen nicht ausgesperrt.
+    // nächsten Vertippen nicht ausgesperrt.
     await expect(registerLoginAttempt(email)).resolves.toBeUndefined();
   });
 
@@ -61,7 +61,7 @@ describe('Begrenzung der Anmeldeversuche', () => {
     const email = 'geduldig@example.test';
     for (let attempt = 0; attempt < max; attempt += 1) await registerLoginAttempt(email);
 
-    // Fenster kuenstlich in die Vergangenheit setzen.
+    // Fenster künstlich in die Vergangenheit setzen.
     await prisma.loginAttempt.update({
       where: { key: `login:${email}` },
       data: { expiresAt: new Date(Date.now() - 1000) },
@@ -73,10 +73,10 @@ describe('Begrenzung der Anmeldeversuche', () => {
     expect(row.expiresAt.getTime()).toBeGreaterThan(Date.now());
   });
 
-  it('zaehlt gleichzeitige Versuche vollstaendig', async () => {
-    // Der eigentliche Grund fuer die eine Datenbankanweisung: mit getrenntem
-    // Lesen und Schreiben wuerden gleichzeitige Versuche denselben alten Wert
-    // lesen und das Limit gemeinsam ueberschreiten.
+  it('zählt gleichzeitige Versuche vollständig', async () => {
+    // Der eigentliche Grund für die eine Datenbankanweisung: mit getrenntem
+    // Lesen und Schreiben würden gleichzeitige Versuche denselben alten Wert
+    // lesen und das Limit gemeinsam überschreiten.
     const email = 'gleichzeitig@example.test';
     const versuche = 20;
 
@@ -93,7 +93,7 @@ describe('Begrenzung der Anmeldeversuche', () => {
     expect(ergebnisse.filter((e) => e === 'geblockt')).toHaveLength(versuche - max);
   });
 
-  it('raeumt abgelaufene Fenster weg', async () => {
+  it('räumt abgelaufene Fenster weg', async () => {
     await registerLoginAttempt('alt@example.test');
     await prisma.loginAttempt.update({
       where: { key: 'login:alt@example.test' },
@@ -105,7 +105,7 @@ describe('Begrenzung der Anmeldeversuche', () => {
     expect(await prisma.loginAttempt.count()).toBe(1);
   });
 
-  it('greift auch ueber den Endpunkt', async () => {
+  it('greift auch über den Endpunkt', async () => {
     const app = createApp();
     const email = 'endpunkt@example.test';
     const body = { email, password: 'ein-falsches-testpasswort' };

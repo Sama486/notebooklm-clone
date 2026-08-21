@@ -20,13 +20,13 @@ export function signToken(payload: TokenPayload): string {
 }
 
 /**
- * Gibt bei jedem Problem `null` zurueck - abgelaufen, falsch signiert, falscher
+ * Gibt bei jedem Problem `null` zurück - abgelaufen, falsch signiert, falscher
  * Aussteller, unpassende Nutzlast. Der Aufrufer hat damit keinen Weg, versehent-
- * lich einen halb geprueften Token zu verwenden.
+ * lich einen halb geprüften Token zu verwenden.
  *
  * `algorithms` ist der wichtige Teil: ohne diese Angabe akzeptiert die
  * Bibliothek den Algorithmus, der im Token selbst steht. Ein Angreifer setzt
- * dann `alg: none` oder signiert mit RS256, wo der oeffentliche Schluessel als
+ * dann `alg: none` oder signiert mit RS256, wo der öffentliche Schlüssel als
  * HMAC-Geheimnis missbraucht wird. Der Algorithmus muss vom Server kommen,
  * nicht vom Token.
  */

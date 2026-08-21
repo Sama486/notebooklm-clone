@@ -7,12 +7,12 @@ export const credentialsSchema = z.object({
     .string()
     .trim()
     .toLowerCase()
-    .email('keine gueltige E-Mail-Adresse')
+    .email('keine gültige E-Mail-Adresse')
     .max(limits.auth.emailMax),
   password: z
     .string()
-    // bcrypt beruecksichtigt nur die ersten 72 Bytes; die Obergrenze verhindert
-    // ausserdem, dass jemand mit sehr langen Eingaben CPU-Zeit verbrennt.
+    // bcrypt berücksichtigt nur die ersten 72 Bytes; die Obergrenze verhindert
+    // außerdem, dass jemand mit sehr langen Eingaben CPU-Zeit verbrennt.
     .min(limits.auth.passwordMin, `mindestens ${limits.auth.passwordMin} Zeichen`)
     .max(limits.auth.passwordMax),
 });

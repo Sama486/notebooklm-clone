@@ -48,7 +48,7 @@ describe('Quellen einlesen', () => {
   describe('PDF', () => {
     it('nimmt ein PDF an und verarbeitet es im Hintergrund', async () => {
       const pdf = makePdf([
-        'Die Berechtigungspruefung steht im Zugriffspfad und nicht daneben. '.repeat(20),
+        'Die Berechtigungsprüfung steht im Zugriffspfad und nicht daneben. '.repeat(20),
         'Der Einstieg ist immer das Notebook. '.repeat(20),
       ]);
 
@@ -58,7 +58,7 @@ describe('Quellen einlesen', () => {
         .set('Content-Type', 'application/pdf')
         .send(pdf);
 
-      // Sofortige Antwort mit Status "pending" - die Verarbeitung laeuft
+      // Sofortige Antwort mit Status "pending" - die Verarbeitung läuft
       // danach weiter und blockiert die Anfrage nicht.
       expect(res.status).toBe(201);
       expect(res.body.source.status).toBe('pending');
@@ -67,17 +67,17 @@ describe('Quellen einlesen', () => {
 
       const source = await prisma.source.findUnique({ where: { id: res.body.source.id } });
       expect(source?.chunkCount).toBeGreaterThan(0);
-      expect(source?.content).toContain('Berechtigungspruefung');
-      // Das Original bleibt fuer die Dokumentansicht erhalten.
+      expect(source?.content).toContain('Berechtigungsprüfung');
+      // Das Original bleibt für die Dokumentansicht erhalten.
       expect(source?.fileData?.length).toBeGreaterThan(0);
-      // Seitenanfaenge werden mitgefuehrt.
+      // Seitenanfänge werden mitgeführt.
       expect(source?.pageBreaks.length).toBe(1);
     });
 
-    it('haengt Seitenzahlen an die Abschnitte', async () => {
+    it('hängt Seitenzahlen an die Abschnitte', async () => {
       const pdf = makePdf([
-        'Seite eins mit ausreichend Text fuer einen Abschnitt. '.repeat(80),
-        'Seite zwei mit ausreichend Text fuer einen Abschnitt. '.repeat(80),
+        'Seite eins mit ausreichend Text für einen Abschnitt. '.repeat(80),
+        'Seite zwei mit ausreichend Text für einen Abschnitt. '.repeat(80),
       ]);
       const res = await request(app)
         .post(`/api/notebooks/${notebookId}/sources/pdf?title=Mehrseitig`)
@@ -96,13 +96,13 @@ describe('Quellen einlesen', () => {
     });
 
     it('speichert Zeichen-Positionen, die auf den Volltext passen', async () => {
-      // Die Zusicherung, die die Zitatfunktion traegt - hier durch die ganze
-      // Kette hindurch geprueft, nicht nur in der reinen Funktion.
+      // Die Zusicherung, die die Zitatfunktion trägt - hier durch die ganze
+      // Kette hindurch geprüft, nicht nur in der reinen Funktion.
       const res = await request(app)
         .post(`/api/notebooks/${notebookId}/sources/pdf?title=Positionen`)
         .set(auth(alice))
         .set('Content-Type', 'application/pdf')
-        .send(makePdf(['Ein Satz ueber die Zustaendigkeit. '.repeat(100)]));
+        .send(makePdf(['Ein Satz über die Zuständigkeit. '.repeat(100)]));
       await waitForStatus(res.body.source.id);
 
       const source = await prisma.source.findUniqueOrThrow({ where: { id: res.body.source.id } });
@@ -135,7 +135,7 @@ describe('Quellen einlesen', () => {
       expect(res.status).toBe(400);
     });
 
-    it('uebernimmt den Dateinamen nirgends - der Titel kommt aus der Anfrage', async () => {
+    it('übernimmt den Dateinamen nirgends - der Titel kommt aus der Anfrage', async () => {
       // Ein Pfad-Ausbruch im Titel bleibt reiner Anzeigetext, weil nichts ins
       // Dateisystem geschrieben wird.
       const res = await request(app)
@@ -152,8 +152,8 @@ describe('Quellen einlesen', () => {
   });
 
   describe('Text', () => {
-    it('nimmt eingefuegten Text an', async () => {
-      const content = 'Ein eingefuegter Absatz ueber die Zustaendigkeit. '.repeat(50);
+    it('nimmt eingefügten Text an', async () => {
+      const content = 'Ein eingefügter Absatz über die Zuständigkeit. '.repeat(50);
       const res = await request(app)
         .post(`/api/notebooks/${notebookId}/sources/text`)
         .set(auth(alice))
@@ -210,7 +210,7 @@ describe('Quellen einlesen', () => {
       expect(await prisma.source.count({ where: { notebookId } })).toBe(0);
     });
 
-    it('Bob kann Alices Quelle nicht lesen, aendern oder loeschen', async () => {
+    it('Bob kann Alices Quelle nicht lesen, ändern oder löschen', async () => {
       const created = await request(app)
         .post(`/api/notebooks/${notebookId}/sources/text`)
         .set(auth(alice))
@@ -229,9 +229,9 @@ describe('Quellen einlesen', () => {
       expect(await prisma.source.findUnique({ where: { id: sourceId } })).not.toBeNull();
     });
 
-    it('eine Quellen-ID aus einem anderen Notebook wird nicht aufgeloest', async () => {
-      // Der Kern der Regel "Kindobjekte nur ueber ihr Notebook": beide
-      // Notebooks gehoeren Alice, aber die Quelle liegt im anderen.
+    it('eine Quellen-ID aus einem anderen Notebook wird nicht aufgelöst', async () => {
+      // Der Kern der Regel "Kindobjekte nur über ihr Notebook": beide
+      // Notebooks gehören Alice, aber die Quelle liegt im anderen.
       const zweites = await createNotebook(app, alice, 'Zweites');
       const created = await request(app)
         .post(`/api/notebooks/${notebookId}/sources/text`)
@@ -267,11 +267,11 @@ describe('Quellen einlesen', () => {
   });
 
   describe('Auswahl', () => {
-    it('laesst sich abwaehlen und wieder anwaehlen', async () => {
+    it('lässt sich abwählen und wieder anwählen', async () => {
       const created = await request(app)
         .post(`/api/notebooks/${notebookId}/sources/text`)
         .set(auth(alice))
-        .send({ title: 'Auswaehlbar', content: 'Inhalt. '.repeat(30) });
+        .send({ title: 'Auswählbar', content: 'Inhalt. '.repeat(30) });
       const sourceId = created.body.source.id;
 
       const base = `/api/notebooks/${notebookId}/sources/${sourceId}`;

@@ -12,13 +12,13 @@ export default function setup(): void {
   if (!databaseUrl) throw new Error('TEST_DATABASE_URL fehlt in der .env');
 
   // Ein einzelner Kommandostring statt Argumentliste: bei `shell: true` warnt
-  // Node sonst, dass Argumente nur aneinandergehaengt und nicht maskiert werden.
+  // Node sonst, dass Argumente nur aneinandergehängt und nicht maskiert werden.
   const result = spawnSync('npx prisma migrate deploy', {
     stdio: 'inherit',
     shell: true,
     env: { ...process.env, DATABASE_URL: databaseUrl },
   });
   if (result.status !== 0) {
-    throw new Error('prisma migrate deploy fuer die Testdatenbank fehlgeschlagen');
+    throw new Error('prisma migrate deploy für die Testdatenbank fehlgeschlagen');
   }
 }

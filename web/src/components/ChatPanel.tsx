@@ -4,7 +4,7 @@ import { streamChat } from '../lib/chatStream.js';
 import { AnswerText, segmentsFromStoredMessage } from './AnswerText.js';
 import type { Citation, Message } from '../lib/types.js';
 
-/** Eine Antwort, wie sie im Fenster steht - stueckweise gewachsen oder geladen. */
+/** Eine Antwort, wie sie im Fenster steht - stückweise gewachsen oder geladen. */
 interface DisplayMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -138,7 +138,7 @@ export function ChatPanel({ notebookId, readySourceCount, onCitationClick }: Cha
           <div className="mx-auto max-w-md rounded-lg border border-dashed border-slate-300 bg-white p-6 text-center">
             <p className="text-sm text-slate-600">
               {readySourceCount === 0
-                ? 'Fuege links eine Quelle hinzu. Der Chat antwortet ausschliesslich aus den Quellen dieses Notebooks.'
+                ? 'Füge links eine Quelle hinzu. Der Chat antwortet ausschließlich aus den Quellen dieses Notebooks.'
                 : 'Stell eine Frage zu deinen Quellen. Jede Aussage bekommt eine Nummer, die zur belegenden Textstelle springt.'}
             </p>
           </div>
@@ -194,7 +194,7 @@ export function ChatPanel({ notebookId, readySourceCount, onCitationClick }: Cha
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
             placeholder={
-              readySourceCount === 0 ? 'Erst eine Quelle hinzufuegen' : 'Frage an deine Quellen'
+              readySourceCount === 0 ? 'Erst eine Quelle hinzufügen' : 'Frage an deine Quellen'
             }
             disabled={streaming || readySourceCount === 0}
             maxLength={2000}

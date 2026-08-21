@@ -7,8 +7,8 @@
  * mit Streaming und Belegen, Fremdzugriff (muss 404 sein), SSRF-Abwehr.
  *
  * Ruft im Gegensatz zu den Tests eine echte KI-API auf und kostet deshalb ein
- * paar Anfragen aus dem Kontingent. Ausdruecklich kein Ersatz fuer die Tests,
- * sondern eine Pruefung, dass die Verkabelung im Betrieb stimmt.
+ * paar Anfragen aus dem Kontingent. Ausdrücklich kein Ersatz für die Tests,
+ * sondern eine Prüfung, dass die Verkabelung im Betrieb stimmt.
  */
 const base = process.argv[2] ?? 'http://localhost:4310';
 
@@ -54,18 +54,18 @@ async function register() {
 const QUELLE = `
 Zugriffskontrolle im Projekt Notebook-Klon.
 
-Der Besitz einer Ressource wird im Zugriffspfad geprueft und nicht in einer
+Der Besitz einer Ressource wird im Zugriffspfad geprüft und nicht in einer
 nachgelagerten Bedingung. Konkret wird ein Notebook mit findFirst und den
 Bedingungen id und userId geholt. Eine Abfrage ohne userId liefert damit
 schlicht kein Ergebnis.
 
 Die Antwort auf einen Zugriff auf fremde Daten ist 404 und nicht 403. Ein 403
-wuerde bestaetigen, dass die angefragte Kennung existiert, und damit koennte
+würde bestätigen, dass die angefragte Kennung existiert, und damit könnte
 jemand fremde Kennungen durch Ausprobieren verifizieren.
 
 Kindobjekte wie Quellen und Nachrichten tragen kein eigenes Besitzerfeld. Sie
-erben die Trennung ueber ihr Notebook. Deshalb wird niemals eine Quelle direkt
-ueber ihre eigene Kennung geladen.
+erben die Trennung über ihr Notebook. Deshalb wird niemals eine Quelle direkt
+über ihre eigene Kennung geladen.
 `.repeat(3);
 
 async function main() {
@@ -135,7 +135,7 @@ async function main() {
   const response = await fetch(`${base}/api/notebooks/${notebookId}/chat`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${alice}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question: 'Warum wird 404 statt 403 zurueckgegeben?' }),
+    body: JSON.stringify({ question: 'Warum wird 404 statt 403 zurückgegeben?' }),
   });
   check('Chat-Endpunkt antwortet', response.ok, `Status ${response.status}`);
   check(
@@ -166,13 +166,13 @@ async function main() {
           markerPositions += segment.text + segment.markers.map((m) => `[${m}]`).join('');
         }
       } catch {
-        // Unvollstaendiges Ereignis an einer Paketgrenze - der naechste
-        // Durchlauf enthaelt es vollstaendig.
+        // Unvollständiges Ereignis an einer Paketgrenze - der nächste
+        // Durchlauf enthält es vollständig.
       }
     }
   }
 
-  check('Antwort enthaelt Text', answer.trim().length > 20, `${answer.trim().length} Zeichen`);
+  check('Antwort enthält Text', answer.trim().length > 20, `${answer.trim().length} Zeichen`);
   check('Antwort kam in mehreren Paketen', packets > 2, `${packets} Pakete`);
   check('erstes Paket kam schnell', firstPacketMs < 15_000, `${firstPacketMs} ms`);
   check('Belege wurden geliefert', citations.length > 0, `${citations.length} Belege`);
@@ -201,10 +201,10 @@ async function main() {
     beleg ? `${beleg.charStart}-${beleg.charEnd} von ${content.length}` : 'kein Beleg',
   );
 
-  // --- Aufraeumen ---------------------------------------------------------
+  // --- Aufräumen ---------------------------------------------------------
   await api(`/api/notebooks/${notebookId}`, { token: alice, method: 'DELETE' });
 
-  console.log(`\n${failures === 0 ? 'Alle Pruefungen bestanden.' : `${failures} Pruefung(en) fehlgeschlagen.`}`);
+  console.log(`\n${failures === 0 ? 'Alle Prüfungen bestanden.' : `${failures} Prüfung(en) fehlgeschlagen.`}`);
   console.log('\nAntwort des Modells:');
   console.log(answer.trim().slice(0, 600));
   process.exit(failures === 0 ? 0 : 1);

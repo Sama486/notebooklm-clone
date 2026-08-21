@@ -7,11 +7,11 @@ import { auth, createNotebook, createUser, resetDatabase, type TestUser } from '
 
 /**
  * Der wichtigste Test des Projekts: Nutzer A legt ein Notebook an, Nutzer B
- * versucht es zu lesen, zu aendern und zu loeschen. Erwartet wird jedes Mal 404.
+ * versucht es zu lesen, zu ändern und zu löschen. Erwartet wird jedes Mal 404.
  *
- * 404 und nicht 403 ist der Punkt: ein 403 wuerde bestaetigen, dass die ID
- * existiert. Wer fremde IDs kennt oder erraet, koennte damit die Existenz
- * fremder Notebooks pruefen, auch ohne an den Inhalt zu kommen.
+ * 404 und nicht 403 ist der Punkt: ein 403 würde bestätigen, dass die ID
+ * existiert. Wer fremde IDs kennt oder errät, könnte damit die Existenz
+ * fremder Notebooks prüfen, auch ohne an den Inhalt zu kommen.
  */
 describe('Autorisierung: fremde Notebooks sind nicht erreichbar', () => {
   let app: Express;
@@ -41,19 +41,19 @@ describe('Autorisierung: fremde Notebooks sind nicht erreichbar', () => {
   it('Bob bekommt 404 beim Lesen', async () => {
     const res = await request(app).get(`/api/notebooks/${aliceNotebook}`).set(auth(bob));
     expect(res.status).toBe(404);
-    // Die Antwort verraet nichts ueber die Existenz der Ressource.
+    // Die Antwort verrät nichts über die Existenz der Ressource.
     expect(JSON.stringify(res.body)).not.toContain('Alices');
   });
 
-  it('Bob bekommt 404 beim Aendern', async () => {
+  it('Bob bekommt 404 beim Ändern', async () => {
     const res = await request(app)
       .patch(`/api/notebooks/${aliceNotebook}`)
       .set(auth(bob))
-      .send({ title: 'Uebernommen' });
+      .send({ title: 'Übernommen' });
     expect(res.status).toBe(404);
   });
 
-  it('Bob bekommt 404 beim Loeschen - und das Notebook lebt noch', async () => {
+  it('Bob bekommt 404 beim Löschen - und das Notebook lebt noch', async () => {
     const res = await request(app).delete(`/api/notebooks/${aliceNotebook}`).set(auth(bob));
     expect(res.status).toBe(404);
 
@@ -61,14 +61,14 @@ describe('Autorisierung: fremde Notebooks sind nicht erreichbar', () => {
     expect(still).not.toBeNull();
   });
 
-  it('Bobs Liste enthaelt Alices Notebook nicht', async () => {
+  it('Bobs Liste enthält Alices Notebook nicht', async () => {
     const res = await request(app).get('/api/notebooks').set(auth(bob));
     expect(res.status).toBe(200);
     expect(res.body.notebooks).toHaveLength(0);
   });
 
   it('ohne Token gibt es 401, nicht 404', async () => {
-    // Unterschied mit Absicht: "nicht angemeldet" ist keine Aussage ueber eine
+    // Unterschied mit Absicht: "nicht angemeldet" ist keine Aussage über eine
     // bestimmte Ressource und darf deshalb ehrlich beantwortet werden.
     const res = await request(app).get(`/api/notebooks/${aliceNotebook}`);
     expect(res.status).toBe(401);

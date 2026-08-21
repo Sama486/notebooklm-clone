@@ -1,13 +1,13 @@
 /**
  * Kommt ein Stream ungepuffert beim Client an?
  *
- * Ruft /api/stream-probe auf und schreibt fuer jedes empfangene Paket den
- * Abstand zum vorherigen. Der Endpunkt sendet zehn Woerter im Sekundentakt.
+ * Ruft /api/stream-probe auf und schreibt für jedes empfangene Paket den
+ * Abstand zum vorherigen. Der Endpunkt sendet zehn Wörter im Sekundentakt.
  *
  *   node scripts/check-streaming.mjs https://notebooklm-clone-api.onrender.com
  *
- * Abstaende um 1000 ms: der Stream geht durch.
- * Alle Pakete auf einmal am Ende: etwas dazwischen puffert - dann waere auch
+ * Abstände um 1000 ms: der Stream geht durch.
+ * Alle Pakete auf einmal am Ende: etwas dazwischen puffert - dann wäre auch
  * die Chat-Antwort keine wachsende Zeile, sondern eine lange Pause mit einem
  * Block am Schluss.
  */
@@ -36,7 +36,7 @@ for await (const chunk of response.body) {
 
 const total = Date.now() - started;
 console.log(`\n${packets} Pakete in ${total} ms`);
-// Zehn Woerter im Sekundentakt: bei durchgereichtem Stream kommen mindestens
+// Zehn Wörter im Sekundentakt: bei durchgereichtem Stream kommen mindestens
 // zehn Pakete an. Puffert etwas dazwischen, sind es ein oder zwei.
 console.log(packets >= 10 ? 'ERGEBNIS: ungepuffert.' : 'ERGEBNIS: GEPUFFERT - Stream kommt nicht durch.');
 process.exit(packets >= 10 ? 0 : 1);

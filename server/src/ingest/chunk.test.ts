@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { chunkText, estimateTokens } from './chunk.js';
 
-/** Erzeugt einen Text aus nummerierten Absaetzen. */
+/** Erzeugt einen Text aus nummerierten Absätzen. */
 function buildText(paragraphs: number, sentencesEach = 6): string {
   const blocks: string[] = [];
   for (let p = 0; p < paragraphs; p += 1) {
     const sentences: string[] = [];
     for (let s = 0; s < sentencesEach; s += 1) {
       sentences.push(
-        `Absatz ${p} Satz ${s} behandelt die Berechtigungspruefung und ihre Auswirkungen.`,
+        `Absatz ${p} Satz ${s} behandelt die Berechtigungsprüfung und ihre Auswirkungen.`,
       );
     }
     blocks.push(sentences.join(' '));
@@ -19,22 +19,22 @@ function buildText(paragraphs: number, sentencesEach = 6): string {
 describe('Zerlegung mit Zeichen-Positionen', () => {
   it('jeder Abschnitt liegt exakt an seinen Zeichen-Positionen', () => {
     // Die wichtigste Zusicherung im ganzen Modul: ohne sie zeigt die
-    // Hervorhebung in der Oberflaeche auf die falsche Stelle im Dokument.
+    // Hervorhebung in der Oberfläche auf die falsche Stelle im Dokument.
     const text = buildText(30);
     for (const chunk of chunkText(text)) {
       expect(text.slice(chunk.charStart, chunk.charEnd)).toBe(chunk.content);
     }
   });
 
-  it('deckt den Text ohne Luecke ab', () => {
+  it('deckt den Text ohne Lücke ab', () => {
     const text = buildText(25);
     const chunks = chunkText(text);
 
     expect(chunks[0]?.charStart).toBe(0);
     expect(chunks.at(-1)?.charEnd).toBe(text.length);
 
-    // Jeder Abschnitt beginnt spaetestens dort, wo der vorige aufgehoert hat.
-    // Waere eine Luecke dazwischen, fiele der Text darin bei der Suche weg.
+    // Jeder Abschnitt beginnt spätestens dort, wo der vorige aufgehört hat.
+    // Wäre eine Lücke dazwischen, fiele der Text darin bei der Suche weg.
     for (let i = 1; i < chunks.length; i += 1) {
       const previous = chunks[i - 1]!;
       const current = chunks[i]!;
@@ -43,7 +43,7 @@ describe('Zerlegung mit Zeichen-Positionen', () => {
     }
   });
 
-  it('Abschnitte ueberlappen sich', () => {
+  it('Abschnitte überlappen sich', () => {
     const chunks = chunkText(buildText(25));
     expect(chunks.length).toBeGreaterThan(1);
     for (let i = 1; i < chunks.length; i += 1) {
@@ -51,12 +51,12 @@ describe('Zerlegung mit Zeichen-Positionen', () => {
     }
   });
 
-  it('nummeriert luecken- und doppelfrei ab 0', () => {
+  it('nummeriert lücken- und doppelfrei ab 0', () => {
     const chunks = chunkText(buildText(20));
     expect(chunks.map((c) => c.index)).toEqual(chunks.map((_, i) => i));
   });
 
-  it('haelt die Zielgroesse ungefaehr ein', () => {
+  it('hält die Zielgrösse ungefähr ein', () => {
     const chunks = chunkText(buildText(40));
     for (const chunk of chunks.slice(0, -1)) {
       // Nicht exakt: geschnitten wird an Absatz- und Satzgrenzen, nicht auf
@@ -66,7 +66,7 @@ describe('Zerlegung mit Zeichen-Positionen', () => {
     }
   });
 
-  it('gibt bei leerem Text nichts zurueck', () => {
+  it('gibt bei leerem Text nichts zurück', () => {
     expect(chunkText('')).toEqual([]);
     expect(chunkText('   \n\n  \t ')).toEqual([]);
   });
@@ -79,8 +79,8 @@ describe('Zerlegung mit Zeichen-Positionen', () => {
   });
 
   it('bricht bei einem Absatz ohne jede Grenze nicht ab', () => {
-    // Ein Text ganz ohne Satzzeichen und Absaetze: der Schnitt muss trotzdem
-    // erfolgen, sonst entstuende ein einziger riesiger Abschnitt.
+    // Ein Text ganz ohne Satzzeichen und Absätze: der Schnitt muss trotzdem
+    // erfolgen, sonst entstünde ein einziger riesiger Abschnitt.
     const text = 'wort '.repeat(6000);
     const chunks = chunkText(text);
 
@@ -91,7 +91,7 @@ describe('Zerlegung mit Zeichen-Positionen', () => {
     }
   });
 
-  it('haengt einen sehr kurzen Rest an den Vorgaenger', () => {
+  it('hängt einen sehr kurzen Rest an den Vorgänger', () => {
     const chunks = chunkText(buildText(20) + '\n\nEnde.');
     expect(chunks.at(-1)!.content.trim().length).toBeGreaterThan(50);
   });
@@ -111,7 +111,7 @@ describe('Zerlegung mit Zeichen-Positionen', () => {
     }
   });
 
-  it('laesst die Seitenzahl offen, wenn es keine Seiten gibt', () => {
+  it('lässt die Seitenzahl offen, wenn es keine Seiten gibt', () => {
     // Text- und URL-Quellen haben keine Seiten. `undefined` ist ehrlicher als
     // eine erfundene 1.
     for (const chunk of chunkText(buildText(10))) {
@@ -119,10 +119,10 @@ describe('Zerlegung mit Zeichen-Positionen', () => {
     }
   });
 
-  it('behaelt Zeichen-Positionen bei Umlauten und Emoji', () => {
-    // JavaScript zaehlt in UTF-16-Einheiten. Ein Emoji ausserhalb der
+  it('behält Zeichen-Positionen bei Umlauten und Emoji', () => {
+    // JavaScript zählt in UTF-16-Einheiten. Ein Emoji außerhalb der
     // Basisebene belegt zwei davon - solange Zerlegung und Hervorhebung
-    // dieselbe Zaehlung verwenden, passt es. Der Test haelt das fest.
+    // dieselbe Zählung verwenden, passt es. Der Test hält das fest.
     const text = 'Grundsätzliche Prüfung 🔐 der Zuständigkeiten. '.repeat(300);
     for (const chunk of chunkText(text)) {
       expect(text.slice(chunk.charStart, chunk.charEnd)).toBe(chunk.content);
@@ -130,8 +130,8 @@ describe('Zerlegung mit Zeichen-Positionen', () => {
   });
 });
 
-describe('Token-Schaetzung', () => {
-  it('waechst mit der Textlaenge und ist nie null bei Inhalt', () => {
+describe('Token-Schätzung', () => {
+  it('wächst mit der Textlänge und ist nie null bei Inhalt', () => {
     expect(estimateTokens('')).toBe(0);
     expect(estimateTokens('a')).toBe(1);
     expect(estimateTokens('a'.repeat(350))).toBe(100);

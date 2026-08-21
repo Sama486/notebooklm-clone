@@ -10,7 +10,7 @@ import type { Citation } from '../lib/types.js';
  */
 
 interface AnswerTextProps {
-  /** Textstuecke und die Marker, die jeweils dahinter standen. */
+  /** Textstücke und die Marker, die jeweils dahinter standen. */
   segments: { text: string; markers: number[] }[];
   citations: Citation[];
   onCitationClick: (citation: Citation) => void;
@@ -22,7 +22,7 @@ export function AnswerText({ segments, citations, onCitationClick }: AnswerTextP
   return (
     <span className="whitespace-pre-wrap break-words">
       {segments.map((segment, index) => (
-        // Der Index ist hier ein zulaessiger Schluessel: die Liste waechst nur
+        // Der Index ist hier ein zulässiger Schlüssel: die Liste wächst nur
         // am Ende und wird nie umsortiert oder gefiltert.
         <span key={index}>
           {segment.text}
@@ -30,7 +30,7 @@ export function AnswerText({ segments, citations, onCitationClick }: AnswerTextP
             const citation = byMarker.get(marker);
             // Ein Marker ohne passenden Beleg wird weggelassen. Das Modell kann
             // eine Nummer erfinden, die es nicht gibt - dann lieber nichts
-            // anzeigen als einen Chip, der ins Leere fuehrt.
+            // anzeigen als einen Chip, der ins Leere führt.
             if (!citation) return null;
 
             return (
@@ -54,7 +54,7 @@ export function AnswerText({ segments, citations, onCitationClick }: AnswerTextP
 /**
  * Baut aus gespeichertem Antworttext und Belegen wieder Segmente.
  *
- * Beim Streamen entstehen die Segmente Paket fuer Paket. Ein aus der Datenbank
+ * Beim Streamen entstehen die Segmente Paket für Paket. Ein aus der Datenbank
  * geladener Verlauf hat sie nicht mehr - dort steht der fertige Text ohne
  * Marker. Die Chips kommen dann gesammelt ans Ende des Absatzes.
  */

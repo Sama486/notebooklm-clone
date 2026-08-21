@@ -1,13 +1,13 @@
 // Datenmodell des NotebookLM-Klons.
 //
-// TRENNLINIE ZWISCHEN NUTZERN: `userId` steht ausschliesslich am Notebook.
+// TRENNLINIE ZWISCHEN NUTZERN: `userId` steht ausschließlich am Notebook.
 // Quellen, Abschnitte und Nachrichten tragen bewusst KEIN `userId` - sie erben
-// die Trennung ueber ihr Notebook. Daraus folgt eine Regel, die im gesamten
+// die Trennung über ihr Notebook. Daraus folgt eine Regel, die im gesamten
 // Zugriffspfad diszipliniert eingehalten wird (siehe src/data/notebookAccess.ts):
 //
-//   Erst das Notebook gegen `userId` aufloesen, dann Kindobjekte ueber
-//   `notebookId` einschraenken. Niemals eine Quelle, einen Abschnitt oder eine
-//   Nachricht direkt ueber die eigene ID laden.
+//   Erst das Notebook gegen `userId` auflösen, dann Kindobjekte über
+//   `notebookId` einschränken. Niemals eine Quelle, einen Abschnitt oder eine
+//   Nachricht direkt über die eigene ID laden.
 
 generator client {
   provider = "prisma-client-js"
@@ -28,7 +28,7 @@ model User {
 
 model Notebook {
   id        String   @id @default(uuid())
-  userId    String // Trennlinie zwischen Nutzern; jede Abfrage geht darueber
+  userId    String // Trennlinie zwischen Nutzern; jede Abfrage geht darüber
   title     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -49,8 +49,8 @@ model Source {
   type        String // "pdf" | "text" | "url"
   originalUrl String?
   content     String   @db.Text // extrahierter Volltext - Grundlage der Zeichen-Positionen
-  // Zeichen-Positionen der Seitenanfaenge aus der PDF-Extraktion. Leer bei Text-
-  // und URL-Quellen, die keine Seiten haben. Traegt die Seitenzahl im Zitat.
+  // Zeichen-Positionen der Seitenanfänge aus der PDF-Extraktion. Leer bei Text-
+  // und URL-Quellen, die keine Seiten haben. Trägt die Seitenzahl im Zitat.
   pageBreaks  Int[]
   fileData    Bytes? // Original-PDF; bewusst in der DB, siehe README
   sizeBytes   Int
@@ -69,14 +69,14 @@ model Source {
 model Chunk {
   id         String  @id @default(uuid())
   sourceId   String
-  notebookId String // denormalisiert: die Aehnlichkeitssuche filtert immer danach
+  notebookId String // denormalisiert: die Ähnlichkeitssuche filtert immer danach
   index      Int
   content    String  @db.Text
-  charStart  Int // Position im Volltext der Quelle - traegt die Zitatfunktion
+  charStart  Int // Position im Volltext der Quelle - trägt die Zitatfunktion
   charEnd    Int
   page       Int?
   tokenCount Int
-  embedding  Float[] // exakter Durchlauf statt Vektor-Index; Begruendung + Messung im README
+  embedding  Float[] // exakter Durchlauf statt Vektor-Index; Begründung + Messung im README
 
   source   Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   notebook Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
@@ -100,7 +100,7 @@ model Message {
 
 // Embedding-Cache. Liegt in der Datenbank und nicht im Prozessspeicher, damit
 // mehrere Instanzen ihn teilen (Abschnitt "Skalierbarkeit" im README).
-// Schluessel ist ein SHA-256 ueber Modellname + Text.
+// Schlüssel ist ein SHA-256 über Modellname + Text.
 model EmbeddingCache {
   hash      String   @id
   model     String
@@ -108,18 +108,18 @@ model EmbeddingCache {
   createdAt DateTime @default(now())
 }
 
-// Zaehler fuer die Anmeldeversuche je Konto.
+// Zähler für die Anmeldeversuche je Konto.
 //
-// Liegt in der Datenbank und nicht im Prozessspeicher, weil ein Zaehler im
-// Prozess bei mehreren Instanzen nichts begrenzt: jede zaehlt fuer sich, und
+// Liegt in der Datenbank und nicht im Prozessspeicher, weil ein Zähler im
+// Prozess bei mehreren Instanzen nichts begrenzt: jede zählt für sich, und
 // das effektive Limit vervielfacht sich. Gemessen gegen die Produktion - die
-// Antworten trugen unterschiedliche Fensterenden, also mehrere Zaehler.
-// Begruendung und Messung im README.
+// Antworten trugen unterschiedliche Fensterenden, also mehrere Zähler.
+// Begründung und Messung im README.
 model LoginAttempt {
   key       String   @id // "login:<e-mail>"
   count     Int      @default(0)
   expiresAt DateTime
 
-  // Fuer das Aufraeumen abgelaufener Fenster.
+  // Für das Aufräumen abgelaufener Fenster.
   @@index([expiresAt])
 }

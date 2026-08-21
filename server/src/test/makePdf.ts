@@ -1,13 +1,13 @@
 /**
- * Baut ein minimales, gueltiges PDF mit vorgegebenem Text je Seite.
+ * Baut ein minimales, gültiges PDF mit vorgegebenem Text je Seite.
  *
- * Erzeugt statt mitgeliefert: eine Binaerdatei im Repo koennte niemand lesen
- * oder pruefen, und der Test soll nachvollziehbar bleiben. Ausserdem laesst
- * sich so gezielt ein PDF bauen, das einen Injektionsversuch enthaelt.
+ * Erzeugt statt mitgeliefert: eine Binärdatei im Repo könnte niemand lesen
+ * oder prüfen, und der Test soll nachvollziehbar bleiben. Außerdem lässt
+ * sich so gezielt ein PDF baün, das einen Injektionsversuch enthält.
  *
  * Eine Seite fasst etwa 45 umbrochene Zeilen zu 90 Zeichen, also rund 4.000
- * Zeichen. Mehr laeuft unten aus der Seite heraus und fehlt anschliessend im
- * extrahierten Text - fuer laengere Texte also mehrere Seiten uebergeben.
+ * Zeichen. Mehr läuft unten aus der Seite heraus und fehlt anschliessend im
+ * extrahierten Text - für längere Texte also mehrere Seiten übergeben.
  */
 export function makePdf(pages: string[]): Buffer {
   const objects: string[] = [];
@@ -20,17 +20,23 @@ export function makePdf(pages: string[]): Buffer {
 
   objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
   objects[2] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pageCount} >>`;
-  objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+  // /WinAnsiEncoding ist nötig, damit Umlaute im extrahierten Text ankommen.
+  // Ohne die Angabe raet der Leser die Kodierung aus der Standardbelegung der
+  // Schrift, und aus einem "ü" wird ein Leerzeichen. Echte Erzeuger schreiben
+  // eine Kodierung oder eine ToUnicode-Tabelle mit; das Test-PDF muss das
+  // ebenso tun, sonst prüft der Test etwas anderes als die Wirklichkeit.
+  objects[3] =
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
 
   pages.forEach((text, i) => {
     objects[pageIds[i] as number] =
       `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] ` +
       `/Resources << /Font << /F1 3 0 R >> >> /Contents ${contentIds[i]} 0 R >>`;
 
-    // Eine Zeile je Textzeile, damit pdfjs Zeilenumbrueche liefert.
-    // Umbrechen, bevor der Text ueber den rechten Seitenrand hinauslaeuft:
-    // was dort landet, liefert pdfjs nicht mehr zurueck, und das Test-PDF waere
-    // stillschweigend kuerzer als beabsichtigt.
+    // Eine Zeile je Textzeile, damit pdfjs Zeilenumbrüche liefert.
+    // Umbrechen, bevor der Text über den rechten Seitenrand hinausläuft:
+    // was dort landet, liefert pdfjs nicht mehr zurück, und das Test-PDF wäre
+    // stillschweigend kürzer als beabsichtigt.
     const lines = text.split('\n').flatMap((line) => wrap(line));
     const body = [
       'BT',
@@ -75,8 +81,8 @@ export function makePdf(pages: string[]): Buffer {
 /**
  * Bricht eine Zeile an Wortgrenzen um.
  *
- * 90 Zeichen passen bei Helvetica 12pt in die Breite einer A4-aehnlichen Seite
- * (612pt minus Rand). Laengere Zeilen laufen aus der Seite heraus und fehlen
+ * 90 Zeichen passen bei Helvetica 12pt in die Breite einer A4-ähnlichen Seite
+ * (612pt minus Rand). Längere Zeilen laufen aus der Seite heraus und fehlen
  * anschliessend im extrahierten Text.
  */
 function wrap(line: string, maxChars = 90): string[] {

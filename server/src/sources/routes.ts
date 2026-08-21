@@ -30,7 +30,7 @@ const titleSchema = z.string().trim().min(1).max(limits.source.titleMax);
  *
  * Gemeinsamer Abschluss aller drei Quellenarten: die Quelle wird mit dem
  * bereits extrahierten Volltext gespeichert, und das Zerlegen und Einbetten
- * laeuft danach im Hintergrund weiter. Die Antwort geht sofort raus.
+ * läuft danach im Hintergrund weiter. Die Antwort geht sofort raus.
  */
 async function createSourceAndStart(input: {
   notebookId: string;
@@ -47,7 +47,7 @@ async function createSourceAndStart(input: {
   const existing = await prisma.source.count({ where: { notebookId: input.notebookId } });
   if (existing >= limits.source.maxPerNotebook) {
     throw conflict(
-      `Ein Notebook kann hoechstens ${limits.source.maxPerNotebook} Quellen enthalten.`,
+      `Ein Notebook kann höchstens ${limits.source.maxPerNotebook} Quellen enthalten.`,
       'too_many_sources',
     );
   }
@@ -78,13 +78,13 @@ async function createSourceAndStart(input: {
 /**
  * Der Upload kommt als Roh-Body, nicht als Multipart-Formular.
  *
- * Damit entfaellt ein Multipart-Parser als Angriffsflaeche - die verbreitete
- * Bibliothek dafuer hatte in ihrer 1.x-Reihe mehrere Schwachstellen. Der Titel
- * kommt als Zod-geprueffter Query-Parameter, und der Dateiname aus dem Upload
- * ist damit von vornherein nur Anzeigetext: er beruehrt nie einen Pfad, weil
+ * Damit entfällt ein Multipart-Parser als Angriffsfläche - die verbreitete
+ * Bibliothek dafür hatte in ihrer 1.x-Reihe mehrere Schwachstellen. Der Titel
+ * kommt als Zod-geprüffter Query-Parameter, und der Dateiname aus dem Upload
+ * ist damit von vornherein nur Anzeigetext: er berührt nie einen Pfad, weil
  * es keinen Pfad gibt. Es wird nichts ins Dateisystem geschrieben.
  *
- * `express.raw` mit eigener, groesserer Grenze - die globale JSON-Grenze von
+ * `express.raw` mit eigener, größerer Grenze - die globale JSON-Grenze von
  * 128 kb gilt hier nicht, alle anderen Endpunkte behalten sie.
  */
 sourcesRouter.post(
@@ -110,9 +110,9 @@ sourcesRouter.post(
       pageBreaks: extracted.pageBreaks,
       sizeBytes: data.length,
       // Das Original bleibt in der Datenbank, damit die Dokumentansicht es
-      // spaeter anzeigen kann. Begruendung im README: das Dateisystem der
-      // Instanz ist fluechtig, und ein Objektspeicher waere ein weiterer
-      // Dienst samt Zugangsdaten fuer wenige Megabyte.
+      // später anzeigen kann. Begründung im README: das Dateisystem der
+      // Instanz ist flüchtig, und ein Objektspeicher wäre ein weiterer
+      // Dienst samt Zugangsdaten für wenige Megabyte.
       fileData: data,
     });
 
@@ -125,7 +125,7 @@ function pdfBody(req: Request): Buffer {
   // Body war leer, oder jemand hat JSON geschickt.
   if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
     throw badRequest(
-      'Es wurde keine PDF-Datei uebertragen. Content-Type muss application/pdf sein.',
+      'Es wurde keine PDF-Datei übertragen. Content-Type muss application/pdf sein.',
       'no_file',
     );
   }
@@ -133,7 +133,7 @@ function pdfBody(req: Request): Buffer {
 }
 
 // ---------------------------------------------------------------------------
-// Text einfuegen
+// Text einfügen
 // ---------------------------------------------------------------------------
 
 sourcesRouter.post(
@@ -178,9 +178,9 @@ sourcesRouter.post(
 
     const { url } = parseBody(z.object({ url: z.string().trim().min(1).max(2000) }), req);
 
-    // Der gesamte SSRF-Schutz steckt in fetchExternalUrl: Schema-Pruefung,
-    // Adresspruefung aller aufgeloesten IPs, IP-Bindung an die Verbindung,
-    // erneute Pruefung bei jeder Weiterleitung, Zeit- und Groessengrenze.
+    // Der gesamte SSRF-Schutz steckt in fetchExternalUrl: Schema-Prüfung,
+    // Adressprüfung aller aufgelösten IPs, IP-Bindung an die Verbindung,
+    // erneute Prüfung bei jeder Weiterleitung, Zeit- und Grössengrenze.
     const fetched = await fetchExternalUrl(url);
 
     if (!/text\/html|application\/xhtml|text\/plain/i.test(fetched.contentType)) {
@@ -207,23 +207,23 @@ sourcesRouter.post(
 );
 
 // ---------------------------------------------------------------------------
-// Lesen, aendern, loeschen
+// Lesen, ändern, löschen
 // ---------------------------------------------------------------------------
 
 /**
  * Volltext einer Quelle - die Grundlage der Dokumentansicht.
  *
- * Die Oberflaeche springt darin zu `charStart` und hebt bis `charEnd` hervor.
- * Deshalb wird der Text UNVERAENDERT ausgeliefert: jede nachtraegliche
- * Bereinigung wuerde die Positionen verschieben, und die Hervorhebung stuende
+ * Die Oberfläche springt darin zu `charStart` und hebt bis `charEnd` hervor.
+ * Deshalb wird der Text UNVERAENDERT ausgeliefert: jede nachträgliche
+ * Bereinigung würde die Positionen verschieben, und die Hervorhebung stünde
  * an der falschen Stelle.
  */
 sourcesRouter.get(
   '/:notebookId/sources/:sourceId',
   asyncHandler(async (req, res) => {
     const { notebookId, sourceId } = parseParams(sourceParams, req);
-    // Erst Notebook gegen userId, dann Quelle ueber notebookId. Nie die Quelle
-    // direkt ueber ihre eigene ID.
+    // Erst Notebook gegen userId, dann Quelle über notebookId. Nie die Quelle
+    // direkt über ihre eigene ID.
     const source = await requireSource(sourceId, notebookId, currentUserId(req));
 
     res.json({
@@ -244,7 +244,7 @@ sourcesRouter.get(
   }),
 );
 
-/** Nur der Status - fuer die Abfrage waehrend der Verarbeitung. */
+/** Nur der Status - für die Abfrage während der Verarbeitung. */
 sourcesRouter.get(
   '/:notebookId/sources',
   asyncHandler(async (req, res) => {
@@ -255,7 +255,7 @@ sourcesRouter.get(
       where: { notebookId: notebook.id },
       orderBy: { createdAt: 'asc' },
       take: limits.source.maxPerNotebook,
-      // Ohne `content` und `fileData`: die Abfrage laeuft im Sekundentakt,
+      // Ohne `content` und `fileData`: die Abfrage läuft im Sekundentakt,
       // solange etwas verarbeitet wird.
       select: {
         id: true,
@@ -284,7 +284,7 @@ sourcesRouter.patch(
     const { selected } = parseBody(z.object({ selected: z.boolean() }), req);
 
     // `updateMany` mit notebookId im where: auch der schreibende Zugriff geht
-    // ueber das Notebook, nicht ueber die Quellen-ID allein.
+    // über das Notebook, nicht über die Quellen-ID allein.
     await prisma.source.updateMany({ where: { id: sourceId, notebookId }, data: { selected } });
 
     res.json({ source: { id: sourceId, selected } });
@@ -303,8 +303,8 @@ sourcesRouter.post(
       throw conflict('Diese Quelle wird gerade verarbeitet.', 'already_processing');
     }
 
-    // Wiederholbar: ingestSource loescht die alten Abschnitte, bevor es neue
-    // schreibt. Zweimal ausgefuehrt entstehen keine Dubletten.
+    // Wiederholbar: ingestSource löscht die alten Abschnitte, bevor es neü
+    // schreibt. Zweimal ausgeführt entstehen keine Dubletten.
     await prisma.source.update({
       where: { id: source.id },
       data: { status: 'pending', error: null },

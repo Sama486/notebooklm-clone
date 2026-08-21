@@ -15,15 +15,15 @@ export function createApp() {
   const app = express();
 
   // Render terminiert TLS in einem vorgelagerten Proxy. Ohne diese Zeile sieht
-  // die Anwendung als Absender-IP den Proxy - und das Rate-Limit wuerde alle
-  // Nutzer in einen Topf werfen. Genau 1, nicht `true`: `true` liesse einen
-  // Client seine eigene IP ueber X-Forwarded-For faelschen und damit das
+  // die Anwendung als Absender-IP den Proxy - und das Rate-Limit würde alle
+  // Nutzer in einen Topf werfen. Genau 1, nicht `true`: `true` ließe einen
+  // Client seine eigene IP über X-Forwarded-For fälschen und damit das
   // Rate-Limit umgehen.
   app.set('trust proxy', isProduction ? 1 : false);
   app.disable('x-powered-by');
 
-  // Die API liefert ausschliesslich JSON und Streams aus, kein HTML. CSP und
-  // die uebrigen Header sind trotzdem gesetzt - falls doch einmal etwas
+  // Die API liefert ausschließlich JSON und Streams aus, kein HTML. CSP und
+  // die übrigen Header sind trotzdem gesetzt - falls doch einmal etwas
   // gerendert wird, ist die restriktive Variante die voreingestellte.
   app.use(
     helmet({
@@ -49,8 +49,8 @@ export function createApp() {
     }),
   );
 
-  // Global klein gehalten. Der PDF-Upload bringt seine eigene, groessere Grenze
-  // mit (sources/routes.ts) - eine grosszuegige globale Grenze wuerde jeden
+  // Global klein gehalten. Der PDF-Upload bringt seine eigene, größere Grenze
+  // mit (sources/routes.ts) - eine großzügige globale Grenze würde jeden
   // JSON-Endpunkt zum Speicher-Ventil machen.
   app.use(express.json({ limit: limits.body.json }));
 
@@ -63,8 +63,8 @@ export function createApp() {
   app.use('/api/auth', authRouter);
 
   // `requireAuth` liegt auf dem Router, nicht auf einzelnen Routen: eine
-  // spaeter hinzugefuegte Route in diesen Dateien ist damit von sich aus
-  // geschuetzt, ohne dass jemand daran denken muss.
+  // später hinzugefügte Route in diesen Dateien ist damit von sich aus
+  // geschützt, ohne dass jemand daran denken muss.
   app.use('/api/notebooks', requireAuth, notebooksRouter);
   app.use('/api/notebooks', requireAuth, sourcesRouter);
   app.use('/api/notebooks', requireAuth, chatRouter);

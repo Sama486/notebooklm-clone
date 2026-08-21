@@ -11,7 +11,7 @@ const server = app.listen(env.PORT, () => {
 /**
  * Render schickt SIGTERM und wartet danach eine begrenzte Zeit. Ohne sauberes
  * Herunterfahren werden laufende Anfragen mitten im Satz abgeschnitten und
- * Datenbankverbindungen bleiben auf der Serverseite haengen.
+ * Datenbankverbindungen bleiben auf der Serverseite hängen.
  */
 function shutdown(signal: string): void {
   logger.info('Fahre herunter', { signal });

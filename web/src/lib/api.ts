@@ -1,13 +1,13 @@
 /**
  * Der einzige Weg, auf dem das Frontend mit der API spricht.
  *
- * Alles laeuft hier durch, damit es genau eine Stelle gibt fuer: den Token
- * anhaengen, Fehler in etwas Anzeigbares uebersetzen und auf 401 reagieren.
- * Verstreute `fetch`-Aufrufe waeren drei Stellen, an denen eines davon fehlt.
+ * Alles läuft hier durch, damit es genau eine Stelle gibt für: den Token
+ * anhängen, Fehler in etwas Anzeigbares übersetzen und auf 401 reagieren.
+ * Verstreute `fetch`-Aufrufe wären drei Stellen, an denen eines davon fehlt.
  */
 
-// Leer im Entwicklungsbetrieb: dann laeuft alles ueber den Vite-Proxy und
-// damit ueber denselben Ursprung.
+// Leer im Entwicklungsbetrieb: dann läuft alles über den Vite-Proxy und
+// damit über denselben Ursprung.
 const BASE_URL = import.meta.env.VITE_API_URL ?? '';
 
 const TOKEN_KEY = 'notebooklm-clone.token';
@@ -25,7 +25,7 @@ export function setToken(token: string | null): void {
  * Fehler mit einer Meldung, die angezeigt werden darf.
  *
  * Die Meldung kommt aus der API und ist dort bereits daraufhin gefiltert, dass
- * sie keine internen Details enthaelt.
+ * sie keine internen Details enthält.
  */
 export class ApiError extends Error {
   constructor(
@@ -48,7 +48,7 @@ export function setUnauthorizedHandler(handler: (() => void) | null): void {
 interface RequestOptions {
   method?: string;
   body?: unknown;
-  /** Roh-Body fuer den PDF-Upload; umgeht die JSON-Serialisierung. */
+  /** Roh-Body für den PDF-Upload; umgeht die JSON-Serialisierung. */
   raw?: { data: Blob | ArrayBuffer; contentType: string };
   signal?: AbortSignal;
 }
@@ -57,19 +57,19 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const response = await rawRequest(path, options);
   if (response.status === 204) return undefined as T;
 
-  // Antwort auf JSON pruefen, statt blind zu parsen.
+  // Antwort auf JSON prüfen, statt blind zu parsen.
   //
   // Zeigt VITE_API_URL versehentlich auf das Frontend statt auf die API, dann
   // beantwortet der Static-Host jeden Pfad mit index.html - und zwar mit
-  // Status 200. Ohne diese Pruefung scheitert erst `response.json()` an einem
-  // "<", und der Nutzer bekaeme "Es ist ein Fehler aufgetreten" fuer einen
+  // Status 200. Ohne diese Prüfung scheitert erst `response.json()` an einem
+  // "<", und der Nutzer bekäme "Es ist ein Fehler aufgetreten" für einen
   // reinen Konfigurationsfehler. Genau das ist beim ersten Deployment passiert.
   const contentType = response.headers.get('content-type') ?? '';
   if (!contentType.includes('application/json')) {
     throw new ApiError(
       response.status,
       'unexpected_response',
-      'Der Server hat keine gueltige Antwort geliefert. Ist die API-Adresse richtig konfiguriert?',
+      'Der Server hat keine gültige Antwort geliefert. Ist die API-Adresse richtig konfiguriert?',
     );
   }
 
@@ -107,7 +107,7 @@ export async function rawRequest(path: string, options: RequestOptions = {}): Pr
 
   if (response.ok) return response;
 
-  // 401 heisst: Token fehlt oder ist abgelaufen. Der Nutzer landet auf der
+  // 401 heißt: Token fehlt oder ist abgelaufen. Der Nutzer landet auf der
   // Anmeldeseite, statt auf einer Seite voller Fehlermeldungen zu sitzen.
   if (response.status === 401) {
     setToken(null);

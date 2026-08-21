@@ -5,11 +5,11 @@ import type { Citation } from './types.js';
  * Liest die gestreamte Chat-Antwort.
  *
  * `fetch` statt `EventSource`, weil EventSource nur GET kann und keine eigenen
- * Kopfzeilen zulaesst - der Token muesste dann in die URL, und URLs landen in
+ * Kopfzeilen zulässt - der Token müsste dann in die URL, und URLs landen in
  * Server-Logs und im Verlauf des Browsers.
  */
 
-/** Ein Stueck Text und die Marker, die unmittelbar dahinter standen. */
+/** Ein Stück Text und die Marker, die unmittelbar dahinter standen. */
 export interface Segment {
   text: string;
   markers: number[];
@@ -48,13 +48,13 @@ export async function streamChat(
     if (done) break;
 
     // `stream: true`, weil ein Mehrbyte-Zeichen zwischen zwei Netzpaketen
-    // zerrissen sein kann. Ohne das entstuende an der Bruchstelle ein
+    // zerrissen sein kann. Ohne das entstünde an der Bruchstelle ein
     // Ersatzzeichen mitten in einem Umlaut.
     buffer += decoder.decode(value, { stream: true });
 
-    // Ereignisse sind durch eine Leerzeile getrennt. Ein unvollstaendiges
+    // Ereignisse sind durch eine Leerzeile getrennt. Ein unvollständiges
     // Ereignis am Pufferende bleibt stehen, bis der Rest ankommt - dieselbe
-    // Ueberlegung wie beim Rueckhaltefenster fuer Marker auf der Serverseite.
+    // Überlegung wie beim Rückhaltefenster für Marker auf der Serverseite.
     const events = buffer.split('\n\n');
     buffer = events.pop() ?? '';
 

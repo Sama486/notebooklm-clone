@@ -5,7 +5,7 @@ import { signToken, verifyToken } from './tokens.js';
 
 const payload = { sub: '11111111-1111-4111-8111-111111111111', email: 'a@example.test' };
 
-describe('JWT-Pruefung', () => {
+describe('JWT-Prüfung', () => {
   it('akzeptiert ein selbst ausgestelltes Token', () => {
     expect(verifyToken(signToken(payload))).toEqual(payload);
   });
@@ -18,7 +18,7 @@ describe('JWT-Pruefung', () => {
   });
 
   it('weist ein Token mit falschem Geheimnis ab', () => {
-    const foreign = jwt.sign(payload, 'ein-anderes-geheimnis-mit-genug-laenge', {
+    const foreign = jwt.sign(payload, 'ein-anderes-geheimnis-mit-genug-länge', {
       algorithm: 'HS256',
       issuer: 'notebooklm-clone',
     });
@@ -43,7 +43,7 @@ describe('JWT-Pruefung', () => {
   });
 
   it('weist ein Token mit unpassender Nutzlast ab', () => {
-    // Signatur korrekt, aber `sub` ist keine UUID - die Zod-Pruefung faengt es.
+    // Signatur korrekt, aber `sub` ist keine UUID - die Zod-Prüfung fängt es.
     const odd = jwt.sign({ sub: 'nicht-uuid', email: 'a@example.test' }, env.JWT_SECRET, {
       algorithm: 'HS256',
       issuer: 'notebooklm-clone',

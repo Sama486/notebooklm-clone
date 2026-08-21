@@ -4,11 +4,11 @@ import { sseTextChunks } from './sse.js';
 import { AiError, type AiClient, type ChatRequest } from './types.js';
 
 /**
- * Gemini ueber die REST-Schnittstelle.
+ * Gemini über die REST-Schnittstelle.
  *
  * Bewusst `fetch` statt des Anbieter-SDK: es geht um zwei Endpunkte, das SDK
- * waere eine Abhaengigkeit mit eigenem Versionsverlauf fuer etwa hundert Zeilen
- * Code. Ausserdem ist das SSE-Parsing hier sichtbar - und das ist genau die
+ * wäre eine Abhängigkeit mit eigenem Versionsverlauf für etwa hundert Zeilen
+ * Code. Außerdem ist das SSE-Parsing hier sichtbar - und das ist genau die
  * Stelle, an der die Marker-Erkennung ansetzt.
  */
 
@@ -23,7 +23,7 @@ export function createGeminiClient(apiKey: string): AiClient {
 
     async embedQuery(text) {
       const [vector] = await embed(apiKey, [text], 'RETRIEVAL_QUERY');
-      if (!vector) throw new AiError('Kein Embedding fuer die Frage erhalten.', false);
+      if (!vector) throw new AiError('Kein Embedding für die Frage erhalten.', false);
       return vector;
     },
 
@@ -43,7 +43,7 @@ async function embed(
   if (texts.length === 0) return [];
 
   const results: number[][] = [];
-  // In Stapeln, nicht einzeln: ein Netzaufruf je Abschnitt waere bei einem
+  // In Stapeln, nicht einzeln: ein Netzaufruf je Abschnitt wäre bei einem
   // achtzigseitigen PDF ein paar hundert Anfragen hintereinander.
   for (let i = 0; i < texts.length; i += limits.embedding.batchSize) {
     const batch = texts.slice(i, i + limits.embedding.batchSize);
@@ -92,12 +92,12 @@ async function embedBatch(
 }
 
 /**
- * Bringt den Vektor auf Laenge 1.
+ * Bringt den Vektor auf Länge 1.
  *
  * Notwendig, weil wir die Dimensionen von 3072 auf 768 reduzieren lassen
  * (`outputDimensionality`). Das Modell schneidet den Vektor dabei ab, und ein
- * abgeschnittener Vektor ist nicht mehr normiert. Ohne diesen Schritt haengt
- * die Kosinus-Aehnlichkeit an der Restlaenge statt an der Bedeutung.
+ * abgeschnittener Vektor ist nicht mehr normiert. Ohne diesen Schritt hängt
+ * die Kosinus-Ähnlichkeit an der Restlänge statt an der Bedeutung.
  */
 function normalize(values: number[]): number[] {
   let sum = 0;
@@ -114,7 +114,7 @@ async function* streamChat(apiKey: string, request: ChatRequest): AsyncIterable<
   const body = {
     // Der System-Prompt steht in einem eigenen Feld, nicht als erste
     // Nachricht. Damit kann Dokumentinhalt, der wie eine Nachricht aussieht,
-    // ihn nicht ueberschreiben.
+    // ihn nicht überschreiben.
     systemInstruction: { parts: [{ text: request.system }] },
     contents: request.messages.map((message) => ({
       role: message.role === 'assistant' ? 'model' : 'user',
@@ -152,12 +152,12 @@ async function* streamChat(apiKey: string, request: ChatRequest): AsyncIterable<
 
 async function toAiError(response: Response): Promise<AiError> {
   // Der Fehlertext des Anbieters wird geloggt, aber nie weitergereicht: er kann
-  // Teile des Prompts enthalten, und der Prompt enthaelt Nutzerdokumente.
+  // Teile des Prompts enthalten, und der Prompt enthält Nutzerdokumente.
   const detail = await response.text().catch(() => '');
   logger.error('Fehler vom KI-Anbieter', { status: response.status, detail: detail.slice(0, 500) });
 
-  // 429 (Kontingent) und 5xx sind voruebergehend, 4xx sonst nicht - ein
-  // falscher Schluessel wird durch Wiederholen nicht richtig.
+  // 429 (Kontingent) und 5xx sind vorübergehend, 4xx sonst nicht - ein
+  // falscher Schlüssel wird durch Wiederholen nicht richtig.
   const retryable = response.status === 429 || response.status >= 500;
   return new AiError(`Der KI-Dienst antwortete mit Status ${response.status}.`, retryable);
 }
@@ -166,7 +166,7 @@ async function toAiError(response: Response): Promise<AiError> {
  * Wiederholung mit exponentiell wachsender Wartezeit.
  *
  * Ohne Wartezeit zwischen den Versuchen macht ein Wiederholungsmechanismus die
- * Lage schlimmer: bei einem Kontingentfehler schickt er sofort die naechste
+ * Lage schlimmer: bei einem Kontingentfehler schickt er sofort die nächste
  * Anfrage in dasselbe volle Kontingent.
  */
 async function withRetry<T>(operation: () => Promise<T>): Promise<T> {

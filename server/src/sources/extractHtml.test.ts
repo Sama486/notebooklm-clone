@@ -10,9 +10,9 @@ describe('HTML-Extraktion', () => {
     expect(result.title).toBe('Jahresbericht 2024');
   });
 
-  it('faellt auf h1 und dann auf den Ersatztitel zurueck', () => {
-    expect(extractHtml('<body><h1>Ueberschrift</h1><p>Text.</p></body>', 'ersatz').title).toBe(
-      'Ueberschrift',
+  it('fällt auf h1 und dann auf den Ersatztitel zurück', () => {
+    expect(extractHtml('<body><h1>Überschrift</h1><p>Text.</p></body>', 'ersatz').title).toBe(
+      'Überschrift',
     );
     expect(extractHtml('<body><p>Nur Text.</p></body>', 'ersatz').title).toBe('ersatz');
   });
@@ -44,7 +44,7 @@ describe('HTML-Extraktion', () => {
   });
 
   it('bevorzugt <article>, wenn dort genug Text steht', () => {
-    const langerText = 'Ein Satz mit ausreichend Zeichen fuer die Erkennung. '.repeat(10);
+    const langerText = 'Ein Satz mit ausreichend Zeichen für die Erkennung. '.repeat(10);
     const html = `<body><div>Beiwerk am Rand.</div><article><p>${langerText}</p></article></body>`;
     const { text } = extractHtml(html, 'ersatz');
 
@@ -58,21 +58,21 @@ describe('HTML-Extraktion', () => {
   });
 
   it('macht aus Blockelementen Absatzgrenzen', () => {
-    // Ohne diese Grenzen haette die Zerlegung nichts zum Schneiden und der
-    // ganze Text waere ein einziger Block.
+    // Ohne diese Grenzen hätte die Zerlegung nichts zum Schneiden und der
+    // ganze Text wäre ein einziger Block.
     const { text } = extractHtml('<body><p>Erster Absatz.</p><p>Zweiter Absatz.</p></body>', 'e');
     expect(text).toMatch(/Erster Absatz\.\s*\n\s*\n?\s*Zweiter Absatz\./);
   });
 
-  it('normalisiert geschuetzte Leerzeichen', () => {
-    // Sehen aus wie Leerzeichen, sind aber keine - die Zerlegung wuerde an
+  it('normalisiert geschützte Leerzeichen', () => {
+    // Sehen aus wie Leerzeichen, sind aber keine - die Zerlegung würde an
     // ihnen keine Wortgrenze erkennen.
     const { text } = extractHtml('<body><p>zehn&nbsp;Prozent&nbsp;mehr</p></body>', 'e');
     expect(text).toContain('zehn Prozent mehr');
     expect(text).not.toContain(' ');
   });
 
-  it('wirft, wenn die Seite keinen Text enthaelt', () => {
+  it('wirft, wenn die Seite keinen Text enthält', () => {
     expect(() => extractHtml('<body><script>nur code</script></body>', 'e')).toThrowError();
   });
 });

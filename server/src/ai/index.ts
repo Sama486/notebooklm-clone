@@ -18,14 +18,14 @@ export function getAiClient(): AiClient {
   if (client) return client;
 
   // In Tests niemals ein echter Aufruf. Auch nicht versehentlich, wenn jemand
-  // einen Schluessel in der Testumgebung stehen hat.
+  // einen Schlüssel in der Testumgebung stehen hat.
   if (isTest) {
     client = createTestAiClient();
     return client;
   }
 
   if (!env.GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY fehlt - ohne Schluessel gibt es keine Embeddings und keinen Chat.');
+    throw new Error('GEMINI_API_KEY fehlt - ohne Schlüssel gibt es keine Embeddings und keinen Chat.');
   }
 
   logger.info('KI-Client erzeugt', { anbieter: 'gemini' });
@@ -33,7 +33,7 @@ export function getAiClient(): AiClient {
   return client;
 }
 
-/** Nur fuer Tests: setzt einen eigenen Client ein. */
+/** Nur für Tests: setzt einen eigenen Client ein. */
 export function setAiClient(replacement: AiClient): void {
   client = replacement;
 }

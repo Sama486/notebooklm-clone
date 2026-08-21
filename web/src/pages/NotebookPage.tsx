@@ -6,7 +6,7 @@ import { ChatPanel } from '../components/ChatPanel.js';
 import { DocumentPanel } from '../components/DocumentPanel.js';
 import type { Citation, NotebookSummary, Source } from '../lib/types.js';
 
-/** Abstand, in dem waehrend der Verarbeitung nach dem Status gefragt wird. */
+/** Abstand, in dem während der Verarbeitung nach dem Status gefragt wird. */
 const POLL_INTERVAL_MS = 1500;
 
 export function NotebookPage() {
@@ -58,9 +58,9 @@ export function NotebookPage() {
   /**
    * Nach dem Status fragen, solange etwas verarbeitet wird - und nur dann.
    *
-   * Das Einlesen laeuft im Hintergrund; der Fortschritt steht in der Datenbank.
-   * Die Abfrage haelt an, sobald keine Quelle mehr "pending" oder "processing"
-   * ist. Ein dauerhaft laufender Zeitgeber wuerde die API sonst rund um die
+   * Das Einlesen läuft im Hintergrund; der Fortschritt steht in der Datenbank.
+   * Die Abfrage hält an, sobald keine Quelle mehr "pending" oder "processing"
+   * ist. Ein daürhaft laufender Zeitgeber würde die API sonst rund um die
    * Uhr belasten, obwohl es nichts zu holen gibt.
    */
   const pollingRef = useRef(false);
@@ -90,7 +90,7 @@ export function NotebookPage() {
       <div className="flex h-full flex-col items-center justify-center gap-3 px-4">
         <p className="text-sm text-slate-700">{error}</p>
         <Link to="/notebooks" className="text-sm font-medium text-sky-700 hover:underline">
-          Zurueck zur Uebersicht
+          Zurück zur Übersicht
         </Link>
       </div>
     );
@@ -108,7 +108,7 @@ export function NotebookPage() {
         <h1 className="truncate text-sm font-semibold text-slate-900">{notebook?.title ?? ''}</h1>
       </header>
 
-      {/* Drei Spalten ab grossen Bildschirmen; darunter untereinander, damit
+      {/* Drei Spalten ab großen Bildschirmen; darunter untereinander, damit
           die Ansicht auf dem Telefon wenigstens benutzbar bleibt. */}
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)_22rem]">
         <div className="min-h-0 border-b border-slate-200 lg:border-b-0">

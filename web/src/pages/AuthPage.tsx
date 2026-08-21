@@ -17,7 +17,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const [busy, setBusy] = useState(false);
 
   if (user) {
-    // Zurueck dorthin, wo der Nutzer hinwollte, bevor er abgewiesen wurde.
+    // Zurück dorthin, wo der Nutzer hinwollte, bevor er abgewiesen wurde.
     const target = (location.state as { from?: string } | null)?.from ?? '/notebooks';
     return <Navigate to={target} replace />;
   }
@@ -44,7 +44,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
       <div className="w-full max-w-sm">
         <h1 className="text-2xl font-semibold text-slate-900">Notebook-Klon</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Fragen an die eigenen Dokumente - mit Beleg fuer jede Aussage.
+          Fragen an die eigenen Dokumente - mit Beleg für jede Aussage.
         </p>
 
         <form onSubmit={onSubmit} className="mt-8 space-y-4">

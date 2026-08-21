@@ -55,7 +55,7 @@ chatRouter.get(
       take,
     });
 
-    // Absteigend geholt (die neuesten), aufsteigend ausgeliefert (Lesereihenfolge).
+    // Absteigend geholt (die neüsten), aufsteigend ausgeliefert (Lesereihenfolge).
     res.json({ messages: messages.reverse() });
   }),
 );
@@ -82,9 +82,9 @@ chatRouter.post(
     const queryEmbedding = await ai.embedQuery(question);
 
     const candidates = await prisma.chunk.findMany({
-      // Der Filter geht ueber notebookId (am Chunk denormalisiert) UND ueber
-      // den Status und die Auswahl der Quelle. Abschnitte einer abgewaehlten
-      // oder noch nicht fertigen Quelle duerfen nicht in die Antwort.
+      // Der Filter geht über notebookId (am Chunk denormalisiert) UND über
+      // den Status und die Auswahl der Quelle. Abschnitte einer abgewählten
+      // oder noch nicht fertigen Quelle dürfen nicht in die Antwort.
       where: { notebookId: notebook.id, source: { selected: true, status: 'ready' } },
       select: {
         id: true,
@@ -96,8 +96,8 @@ chatRouter.post(
         sourceId: true,
         source: { select: { title: true } },
       },
-      // Bewusst ohne `take`: die Aehnlichkeitssuche ist ein exakter Durchlauf
-      // ueber alle Abschnitte des Notebooks. Das ist die einzige unbegrenzte
+      // Bewusst ohne `take`: die Ähnlichkeitssuche ist ein exakter Durchlauf
+      // über alle Abschnitte des Notebooks. Das ist die einzige unbegrenzte
       // Abfrage im Projekt, und sie ist es mit Absicht - Messung, Rechnung und
       // benannter Kipppunkt stehen im README.
     });
@@ -130,7 +130,7 @@ chatRouter.post(
       snippet: chunk.content.slice(0, limits.chat.snippetChars),
     }));
 
-    // 3. Prompt bauen. Die Injection-Abgrenzung steckt in prompt.ts.
+    // 3. Prompt baün. Die Injection-Abgrenzung steckt in prompt.ts.
     const history = await recentHistory(notebook.id);
     const messages: ChatMessage[] = [
       ...history,
@@ -145,8 +145,8 @@ chatRouter.post(
 
     // 4. Streamen und die Marker aus dem Textstrom fischen.
     setStreamingHeaders(res);
-    // Die Belege gehen zuerst raus: das Frontend kann die Chips schon
-    // vorbereiten, waehrend die Antwort noch laeuft.
+    // Die Belege gehen zürst raus: das Frontend kann die Chips schon
+    // vorbereiten, während die Antwort noch läuft.
     sendEvent(res, 'citations', { citations });
 
     const controller = new AbortController();
@@ -163,7 +163,7 @@ chatRouter.post(
           answer += segment.text;
           for (const marker of segment.markers) used.add(marker);
         }
-        // Segmente statt Text plus Nummernliste: nur so weiss die Oberflaeche,
+        // Segmente statt Text plus Nummernliste: nur so weiß die Oberfläche,
         // hinter welcher Aussage ein Chip steht.
         sendEvent(res, 'token', { segments });
       };
@@ -176,20 +176,20 @@ chatRouter.post(
         emit(scrubber.push(part).segments);
       }
 
-      // Was zurueckgehalten wurde, war doch kein Marker.
+      // Was zurückgehalten wurde, war doch kein Marker.
       emit(scrubber.flush().segments);
     } catch (error) {
       logger.error('Modellaufruf fehlgeschlagen', {
         notebookId: notebook.id,
         ...describeError(error),
       });
-      // Header sind laengst raus - ein HTTP-Status geht nicht mehr. Der Fehler
+      // Header sind längst raus - ein HTTP-Status geht nicht mehr. Der Fehler
       // kommt deshalb als Ereignis, und das Frontend zeigt ihn im Chatfenster.
       //
-      // Bei einem voruebergehenden Fehler (Kontingent, Ueberlastung) bekommt
+      // Bei einem vorübergehenden Fehler (Kontingent, Überlastung) bekommt
       // der Nutzer einen Hinweis, der ihm sagt, was zu tun ist. Die Meldung des
       // Anbieters selbst wird nicht weitergereicht - sie kann Teile des Prompts
-      // enthalten, und der Prompt enthaelt Nutzerdokumente.
+      // enthalten, und der Prompt enthält Nutzerdokumente.
       const temporary = error instanceof AiError && error.retryable;
       sendEvent(res, 'error', {
         message: temporary
@@ -200,8 +200,8 @@ chatRouter.post(
       return;
     }
 
-    // 5. Antwort samt der tatsaechlich verwendeten Belege speichern.
-    //    Nur die verwendeten: haette das Modell [3] nie geschrieben, waere ein
+    // 5. Antwort samt der tatsächlich verwendeten Belege speichern.
+    //    Nur die verwendeten: hätte das Modell [3] nie geschrieben, wäre ein
     //    gespeicherter Beleg 3 eine Behauptung ohne Grundlage.
     const usedCitations = citations.filter((citation) => used.has(citation.marker));
 
@@ -210,8 +210,8 @@ chatRouter.post(
         notebookId: notebook.id,
         role: 'assistant',
         content: answer,
-        // Prisma verlangt fuer Json-Felder einen strukturellen JSON-Typ. Ein
-        // benanntes Interface erfuellt dessen Index-Signatur nicht, obwohl der
+        // Prisma verlangt für Json-Felder einen strukturellen JSON-Typ. Ein
+        // benanntes Interface erfüllt dessen Index-Signatur nicht, obwohl der
         // Wert JSON-tauglich ist - deshalb hier die Umdeutung.
         citations: usedCitations as unknown as Prisma.InputJsonValue,
       },
@@ -223,10 +223,10 @@ chatRouter.post(
 );
 
 /**
- * Die letzten Nachrichten als Gespraechsverlauf.
+ * Die letzten Nachrichten als Gesprächsverlauf.
  *
- * Begrenzt, weil sonst jede weitere Frage den Prompt waechst laesst - bei
- * einem langen Gespraech waere irgendwann mehr Verlauf als Textstelle im
+ * Begrenzt, weil sonst jede weitere Frage den Prompt wächst lässt - bei
+ * einem langen Gespräch wäre irgendwann mehr Verlauf als Textstelle im
  * Kontext, und die Kosten je Frage stiegen ohne Ende.
  */
 async function recentHistory(notebookId: string): Promise<ChatMessage[]> {

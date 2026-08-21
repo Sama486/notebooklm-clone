@@ -7,8 +7,8 @@ import { unprocessable } from '../http/errors.js';
  * Extrahiert Titel und Fliesstext aus einer HTML-Seite.
  *
  * Kein Headless-Browser. Die API-Instanz hat 512 MB - Chrome passt da nicht
- * hinein, und der Gewinn waere auf Seiten begrenzt, die ihren Inhalt erst per
- * JavaScript nachladen. Hier genuegt der ausgelieferte HTML-Quelltext.
+ * hinein, und der Gewinn wäre auf Seiten begrenzt, die ihren Inhalt erst per
+ * JavaScript nachladen. Hier genügt der ausgelieferte HTML-Quelltext.
  */
 
 export interface ExtractedHtml {
@@ -16,7 +16,7 @@ export interface ExtractedHtml {
   text: string;
 }
 
-/** Enthaelt nur Beiwerk und wuerde die Suche mit Navigationstexten fluten. */
+/** Enthält nur Beiwerk und würde die Suche mit Navigationstexten fluten. */
 const NOISE = [
   'script',
   'style',
@@ -32,14 +32,14 @@ const NOISE = [
   'template',
 ];
 
-/** Wo der eigentliche Inhalt typischerweise steht, in absteigender Praezision. */
+/** Wo der eigentliche Inhalt typischerweise steht, in absteigender Präzision. */
 const CONTENT_SELECTORS = ['article', 'main', '[role="main"]', '#content', '.content'];
 
 export function extractHtml(html: string, fallbackTitle: string): ExtractedHtml {
   const $ = cheerio.load(html);
 
   $(NOISE.join(',')).remove();
-  // Kommentare koennen ganze verworfene Textfassungen enthalten.
+  // Kommentare können ganze verworfene Textfassungen enthalten.
   $('*')
     .contents()
     .filter((_, node) => node.type === 'comment')
@@ -54,7 +54,7 @@ export function extractHtml(html: string, fallbackTitle: string): ExtractedHtml 
   let container: cheerio.Cheerio<AnyNode> = $('body');
   for (const selector of CONTENT_SELECTORS) {
     const candidate = $(selector).first();
-    // Nur uebernehmen, wenn wirklich Text drinsteht - manche Seiten haben ein
+    // Nur übernehmen, wenn wirklich Text drinsteht - manche Seiten haben ein
     // leeres <main> und den Inhalt daneben.
     if (candidate.length > 0 && candidate.text().trim().length > 200) {
       container = candidate;
@@ -62,14 +62,14 @@ export function extractHtml(html: string, fallbackTitle: string): ExtractedHtml 
     }
   }
 
-  // Blockelemente werden zu Absaetzen. Ohne das entstuende ein einziger
-  // Textblock, und die Zerlegung haette keine Absatzgrenzen zum Schneiden.
+  // Blockelemente werden zu Absätzen. Ohne das entstünde ein einziger
+  // Textblock, und die Zerlegung hätte keine Absatzgrenzen zum Schneiden.
   container.find('p, div, li, tr, h1, h2, h3, h4, h5, h6, br, section').after('\n\n');
 
   const text = normalizeWhitespace(container.text());
 
   if (text.length === 0) {
-    throw unprocessable('Auf der Seite liess sich kein Text finden.', 'html_no_text');
+    throw unprocessable('Auf der Seite ließ sich kein Text finden.', 'html_no_text');
   }
 
   return { title: title || fallbackTitle, text: text.slice(0, limits.source.extractedTextMax) };
@@ -78,8 +78,8 @@ export function extractHtml(html: string, fallbackTitle: string): ExtractedHtml 
 function normalizeWhitespace(text: string): string {
   return text
     .replace(/\r\n?/g, '\n')
-    // Geschuetzte Leerzeichen sehen aus wie Leerzeichen, sind aber keine -
-    // spaeter wuerde die Zerlegung an ihnen keine Wortgrenze erkennen.
+    // Geschützte Leerzeichen sehen aus wie Leerzeichen, sind aber keine -
+    // später würde die Zerlegung an ihnen keine Wortgrenze erkennen.
     .replace(/ /g, ' ')
     .replace(/[ \t]+/g, ' ')
     .replace(/ *\n */g, '\n')
@@ -87,7 +87,7 @@ function normalizeWhitespace(text: string): string {
     .trim();
 }
 
-/** Aus einer URL einen brauchbaren Anzeigetitel bauen, wenn die Seite keinen hat. */
+/** Aus einer URL einen brauchbaren Anzeigetitel baün, wenn die Seite keinen hat. */
 export function titleFromUrl(rawUrl: string): string {
   try {
     const url = new URL(rawUrl);

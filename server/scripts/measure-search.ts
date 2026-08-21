@@ -1,19 +1,19 @@
 /**
- * Misst die Aehnlichkeitssuche gegen synthetische Datenmengen.
+ * Misst die Ähnlichkeitssuche gegen synthetische Datenmengen.
  *
- * Die Suche ist ein exakter Durchlauf ueber alle Abschnitte eines Notebooks -
+ * Die Suche ist ein exakter Durchlauf über alle Abschnitte eines Notebooks -
  * eine bewusste Entscheidung gegen einen Vektor-Index. Eine solche Entscheidung
- * ist nur dann eine Entscheidung und kein Versaeumnis, wenn man sagen kann, ab
- * wann sie nicht mehr traegt. Dieses Skript liefert die Zahlen dafuer.
+ * ist nur dann eine Entscheidung und kein Versäumnis, wenn man sagen kann, ab
+ * wann sie nicht mehr trägt. Dieses Skript liefert die Zahlen dafür.
  *
  * Gemessen werden getrennt:
  *   - die Datenbankabfrage (alle Abschnitte des Notebooks holen)
  *   - die Rangfolge im Speicher (Kosinus gegen jeden Abschnitt)
  * Der interessante Teil ist die Aufteilung: wenn die Abfrage dominiert, ist das
- * Nadeloehr die uebertragene Datenmenge und nicht die Rechenzeit.
+ * Nadelöhr die übertragene Datenmenge und nicht die Rechenzeit.
  *
  * Aufruf:  npm run measure
- * Laeuft gegen TEST_DATABASE_URL und raeumt hinterher auf.
+ * Läuft gegen TEST_DATABASE_URL und räumt hinterher auf.
  */
 import { PrismaClient } from '@prisma/client';
 import { performance } from 'node:perf_hooks';
@@ -29,7 +29,7 @@ const prisma = new PrismaClient({
   datasources: { db: { url: resolveTestDatabaseUrl() } },
 });
 
-/** Zufaelliger Einheitsvektor - dieselbe Form wie ein echtes Embedding. */
+/** Zufälliger Einheitsvektor - dieselbe Form wie ein echtes Embedding. */
 function randomEmbedding(): number[] {
   const values = Array.from({ length: DIMENSIONS }, () => Math.random() - 0.5);
   const length = Math.sqrt(values.reduce((sum, value) => sum + value * value, 0));
@@ -55,7 +55,7 @@ async function seed(chunkCount: number): Promise<{ notebookId: string; userId: s
     },
   });
 
-  // In Stapeln schreiben: 10.000 Zeilen auf einmal sprengen die Grenze fuer
+  // In Stapeln schreiben: 10.000 Zeilen auf einmal sprengen die Grenze für
   // Abfrageparameter.
   const batchSize = 500;
   for (let start = 0; start < chunkCount; start += batchSize) {
@@ -125,7 +125,7 @@ async function measure(notebookId: string, chunkCount: number) {
 
 async function main() {
   console.log(`Dimensionen je Vektor: ${DIMENSIONS}`);
-  console.log(`Messungen je Groesse:  ${RUNS} (Median)`);
+  console.log(`Messungen je Größe:  ${RUNS} (Median)`);
   console.log('');
   console.log('| Abschnitte | DB-Abfrage | Rangfolge | Gesamt   | Daten je Frage |');
   console.log('| ---------: | ---------: | --------: | -------: | -------------: |');
@@ -142,7 +142,7 @@ async function main() {
           ` ${result.megabytes.toFixed(1).padStart(11)} MB |`,
       );
     } finally {
-      // Cascade raeumt Notebook, Quelle und Abschnitte mit ab.
+      // Cascade räumt Notebook, Quelle und Abschnitte mit ab.
       await prisma.user.delete({ where: { id: userId } });
     }
   }

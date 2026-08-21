@@ -1,13 +1,13 @@
 /**
- * Modellvergleich: welches Modell setzt die Zitat-Marker zuverlaessiger?
+ * Modellvergleich: welches Modell setzt die Zitat-Marker zuverlässiger?
  *
  *   node scripts/compare-models.mjs
  *
- * Zwanzig Fragen gegen dieselben Textstellen, zwei Modelle. Gezaehlt wird, wie
+ * Zwanzig Fragen gegen dieselben Textstellen, zwei Modelle. Gezählt wird, wie
  * oft ein Marker fehlt, eine Nummer verwendet wird, die es nicht gibt, oder ein
  * Marker mitten in einem Wort steht.
  *
- * Der Grund fuer die Messung: die Belege sind das Kernfeature. Welches Modell
+ * Der Grund für die Messung: die Belege sind das Kernfeature. Welches Modell
  * sie sauber setzt, ist eine Tatsachenfrage - und eine halbe Stunde Messung
  * ersetzt eine Vermutung durch eine belastbare Aussage.
  *
@@ -32,51 +32,51 @@ if (!apiKey) {
 
 // Kandidaten mit brauchbarem freiem Kontingent.
 //
-// Die grossen Flash-Modelle scheiden aus, bevor die Qualitaet ueberhaupt zur
+// Die großen Flash-Modelle scheiden aus, bevor die Qualität überhaupt zur
 // Debatte steht: gemini-3-flash-preview und gemini-3.6-flash erlauben in der
-// kostenlosen Stufe zwanzig Anfragen AM TAG. Das reicht weder fuer diese
-// Messung noch fuer eine Demo. Gemessen, nicht vermutet - die 429-Antwort
-// nennt das Limit ausdruecklich.
+// kostenlosen Stufe zwanzig Anfragen AM TAG. Das reicht weder für diese
+// Messung noch für eine Demo. Gemessen, nicht vermutet - die 429-Antwort
+// nennt das Limit ausdrücklich.
 const MODELS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
 
 const PASSAGES = [
-  'Passwoerter werden mit bcrypt und dem Kostenfaktor zwoelf gehasht. Zwoelf statt der verbreiteten zehn bedeutet viermal so viel Rechenzeit je Versuch und liegt fuer den anmeldenden Nutzer weiterhin unter einer viertel Sekunde.',
-  'Beim Verifizieren eines JWT wird der Algorithmus ausdruecklich als HS256 vorgegeben. Ohne diese Angabe akzeptiert die Bibliothek den Algorithmus, der im Token selbst steht, und ein Angreifer koennte ein Token mit alg none einreichen.',
-  'Der Besitz einer Ressource wird im Zugriffspfad geprueft. Ein Notebook wird mit findFirst und den Bedingungen id und userId geholt, nicht mit findUnique und einer nachgelagerten Bedingung.',
-  'Die Antwort auf einen Zugriff auf fremde Daten ist 404 und nicht 403. Ein 403 wuerde bestaetigen, dass die angefragte Kennung existiert.',
-  'Beim Abruf einer vom Nutzer angegebenen Adresse werden alle aufgeloesten IP-Adressen geprueft, nicht nur die erste. Die geprueffte Adresse wird anschliessend an die Verbindung gebunden, damit zwischen Pruefung und Verbindungsaufbau kein Zeitfenster fuer DNS Rebinding entsteht.',
+  'Passwörter werden mit bcrypt und dem Kostenfaktor zwölf gehasht. Zwölf statt der verbreiteten zehn bedeutet viermal so viel Rechenzeit je Versuch und liegt für den anmeldenden Nutzer weiterhin unter einer viertel Sekunde.',
+  'Beim Verifizieren eines JWT wird der Algorithmus ausdrücklich als HS256 vorgegeben. Ohne diese Angabe akzeptiert die Bibliothek den Algorithmus, der im Token selbst steht, und ein Angreifer könnte ein Token mit alg none einreichen.',
+  'Der Besitz einer Ressource wird im Zugriffspfad geprüft. Ein Notebook wird mit findFirst und den Bedingungen id und userId geholt, nicht mit findUnique und einer nachgelagerten Bedingung.',
+  'Die Antwort auf einen Zugriff auf fremde Daten ist 404 und nicht 403. Ein 403 würde bestätigen, dass die angefragte Kennung existiert.',
+  'Beim Abruf einer vom Nutzer angegebenen Adresse werden alle aufgelösten IP-Adressen geprüft, nicht nur die erste. Die geprüffte Adresse wird anschliessend an die Verbindung gebunden, damit zwischen Prüfung und Verbindungsaufbau kein Zeitfenster für DNS Rebinding entsteht.',
   'Der Dateityp eines Uploads wird an den ersten Bytes des Inhalts erkannt, nicht an der Dateiendung und nicht am mitgeschickten Content-Type. Beides bestimmt der Absender frei.',
-  'Die Aehnlichkeitssuche ist ein exakter Durchlauf ueber alle Abschnitte eines Notebooks. Bei zehntausend Abschnitten dauert die Datenbankabfrage vierzehn Sekunden, die Rangfolge im Speicher dagegen nur neun Millisekunden.',
-  'Embeddings werden erzeugt, bevor die Transaktion beginnt. Ein Netzaufruf innerhalb einer offenen Transaktion haelt Verbindung und Sperren so lange, wie der fremde Dienst braucht.',
-  'Ein Zitat-Marker kann beim Streamen zwischen zwei Paketen zerrissen werden. Ein Rueckhaltefenster von hoechstens vier Zeichen am Pufferende loest das, ohne die wahrgenommene Geschwindigkeit zu beeintraechtigen.',
-  'Die Abschnitte tragen die Felder charStart und charEnd. Ohne diese Zeichen-Positionen koennte die Oberflaeche nicht zur zitierten Stelle im Dokument springen.',
+  'Die Ähnlichkeitssuche ist ein exakter Durchlauf über alle Abschnitte eines Notebooks. Bei zehntausend Abschnitten daürt die Datenbankabfrage vierzehn Sekunden, die Rangfolge im Speicher dagegen nur neun Millisekunden.',
+  'Embeddings werden erzeugt, bevor die Transaktion beginnt. Ein Netzaufruf innerhalb einer offenen Transaktion hält Verbindung und Sperren so lange, wie der fremde Dienst braucht.',
+  'Ein Zitat-Marker kann beim Streamen zwischen zwei Paketen zerrissen werden. Ein Rückhaltefenster von höchstens vier Zeichen am Pufferende löst das, ohne die wahrgenommene Geschwindigkeit zu beeinträchtigen.',
+  'Die Abschnitte tragen die Felder charStart und charEnd. Ohne diese Zeichen-Positionen könnte die Oberfläche nicht zur zitierten Stelle im Dokument springen.',
 ];
 
 const QUESTIONS = [
   'Welcher Kostenfaktor wird bei bcrypt verwendet?',
-  'Warum zwoelf und nicht zehn?',
+  'Warum zwölf und nicht zehn?',
   'Welcher Algorithmus wird beim JWT vorgegeben?',
-  'Was passiert ohne ausdrueckliche Angabe des Algorithmus?',
-  'Wie wird der Besitz einer Ressource geprueft?',
-  'Welche Prisma-Methode wird dafuer verwendet?',
-  'Warum wird 404 statt 403 zurueckgegeben?',
-  'Wie viele IP-Adressen werden beim URL-Abruf geprueft?',
-  'Wogegen schuetzt die Bindung der IP an die Verbindung?',
+  'Was passiert ohne ausdrückliche Angabe des Algorithmus?',
+  'Wie wird der Besitz einer Ressource geprüft?',
+  'Welche Prisma-Methode wird dafür verwendet?',
+  'Warum wird 404 statt 403 zurückgegeben?',
+  'Wie viele IP-Adressen werden beim URL-Abruf geprüft?',
+  'Wogegen schützt die Bindung der IP an die Verbindung?',
   'Woran wird der Dateityp eines Uploads erkannt?',
   'Warum reicht die Dateiendung nicht aus?',
-  'Wie lange dauert die Datenbankabfrage bei zehntausend Abschnitten?',
+  'Wie lange daürt die Datenbankabfrage bei zehntausend Abschnitten?',
   'Wie lange braucht die Rangfolge im Speicher?',
   'Wann werden die Embeddings erzeugt?',
-  'Warum liegen die Embeddings ausserhalb der Transaktion?',
-  'Wie gross ist das Rueckhaltefenster beim Streamen?',
-  'Welches Problem loest das Rueckhaltefenster?',
+  'Warum liegen die Embeddings außerhalb der Transaktion?',
+  'Wie groß ist das Rückhaltefenster beim Streamen?',
+  'Welches Problem löst das Rückhaltefenster?',
   'Welche Felder tragen die Zeichen-Positionen?',
   'Wozu werden charStart und charEnd gebraucht?',
   'Welche Rolle spielt der Content-Type beim Upload?',
 ];
 
 const SYSTEM = [
-  'Du beantwortest Fragen ausschliesslich auf Grundlage der Textstellen, die dir der Nutzer mitschickt.',
+  'Du beantwortest Fragen ausschließlich auf Grundlage der Textstellen, die dir der Nutzer mitschickt.',
   '',
   'Regeln:',
   '1. Antworte nur mit dem, was in den Textstellen steht.',
@@ -100,9 +100,9 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * Eine Frage stellen, mit Wiederholung bei Kontingentfehlern.
  *
  * Die kostenlose Stufe erlaubt nur wenige Anfragen je Minute. Ohne Wiederholung
- * scheitert der Grossteil der Aufrufe mit 429, und die Messung zaehlt dann
- * nicht die Qualitaet der Marker, sondern das Kontingent - ein Ergebnis, das
- * schlimmer waere als keines, weil es echt aussieht.
+ * scheitert der Grossteil der Aufrufe mit 429, und die Messung zählt dann
+ * nicht die Qualität der Marker, sondern das Kontingent - ein Ergebnis, das
+ * schlimmer wäre als keines, weil es echt aussieht.
  */
 async function ask(model, question) {
   for (let attempt = 0; attempt < 6; attempt += 1) {
@@ -133,13 +133,13 @@ async function ask(model, question) {
       return {
         text: parts.map((p) => p.text ?? '').join(''),
         status: 200,
-        // Denkschritte zaehlen gegen das Ausgabe-Kontingent und kosten Zeit.
-        // Ob sie fuer belegte Antworten etwas bringen, ist genau die Frage.
+        // Denkschritte zählen gegen das Ausgabe-Kontingent und kosten Zeit.
+        // Ob sie für belegte Antworten etwas bringen, ist genau die Frage.
         thoughts: data.usageMetadata?.thoughtsTokenCount ?? 0,
       };
     }
 
-    // 429 heisst Kontingent: warten und erneut versuchen. Alles andere ist ein
+    // 429 heißt Kontingent: warten und erneut versuchen. Alles andere ist ein
     // echter Fehler, den Wiederholen nicht behebt.
     if (response.status !== 429) return { text: '', status: response.status };
     await sleep(15_000 * (attempt + 1));
@@ -147,7 +147,7 @@ async function ask(model, question) {
   return { text: '', status: 429 };
 }
 
-/** Zaehlt die drei Fehlerarten in einer Antwort. */
+/** Zählt die drei Fehlerarten in einer Antwort. */
 function inspect(text) {
   const markers = [...text.matchAll(/\[(\d{1,3})\]/g)];
 
@@ -176,7 +176,7 @@ async function main() {
       const { text, status, thoughts } = await ask(model, question);
       if (status !== 200) {
         tally.failed += 1;
-        console.log(`  Frage uebersprungen, HTTP ${status}`);
+        console.log(`  Frage übersprungen, HTTP ${status}`);
         continue;
       }
       tally.thoughts += thoughts ?? 0;

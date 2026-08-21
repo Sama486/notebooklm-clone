@@ -5,31 +5,31 @@ import type { AiClient, ChatRequest } from './types.js';
 /**
  * Deterministisches Test-Double des KI-Clients.
  *
- * Ruft nie eine echte API auf. Die Tests sollen die Anwendung pruefen - nicht
+ * Ruft nie eine echte API auf. Die Tests sollen die Anwendung prüfen - nicht
  * die Tagesform eines Sprachmodells und nicht die Netzverbindung. Ein Test, der
  * Geld kostet und gelegentlich anders ausgeht, wird abgeschaltet, und ein
- * abgeschalteter Test schuetzt niemanden.
+ * abgeschalteter Test schützt niemanden.
  *
- * Die Embeddings sind ein Hash ueber den Text: gleicher Text ergibt immer
- * denselben Vektor, aehnlicher Text ergibt keinen aehnlichen Vektor. Fuer alles
- * ausser der Trefferqualitaet reicht das - und die Trefferqualitaet wird nicht
+ * Die Embeddings sind ein Hash über den Text: gleicher Text ergibt immer
+ * denselben Vektor, ähnlicher Text ergibt keinen ähnlichen Vektor. Für alles
+ * außer der Trefferqualität reicht das - und die Trefferqualität wird nicht
  * im Testlauf gemessen, sondern im Modellvergleich von Hand.
  */
 
 export interface TestDoubleOptions {
   /**
-   * Antwort des Modells, in Paketen. Die Aufteilung ist Absicht: damit laesst
-   * sich ein ueber zwei Pakete zerrissener Zitat-Marker gezielt erzeugen.
+   * Antwort des Modells, in Paketen. Die Aufteilung ist Absicht: damit lässt
+   * sich ein über zwei Pakete zerrissener Zitat-Marker gezielt erzeugen.
    */
   reply?: string[];
   /** Wird statt einer Antwort geworfen. */
   failWith?: Error;
-  /** Verzoegerung je Paket in Millisekunden. */
+  /** Verzögerung je Paket in Millisekunden. */
   delayMs?: number;
 }
 
 export interface TestAiClient extends AiClient {
-  /** Alle bisher gestellten Chat-Anfragen - fuer Zusicherungen ueber den Prompt. */
+  /** Alle bisher gestellten Chat-Anfragen - für Zusicherungen über den Prompt. */
   readonly requests: ChatRequest[];
   setReply(parts: string[]): void;
 }
@@ -68,8 +68,8 @@ export function createTestAiClient(options: TestDoubleOptions = {}): TestAiClien
 }
 
 /**
- * Vektor aus einem Hash des Textes. Gleicher Text, gleicher Vektor - ueber
- * Prozessgrenzen und Testlaeufe hinweg.
+ * Vektor aus einem Hash des Textes. Gleicher Text, gleicher Vektor - über
+ * Prozessgrenzen und Testläufe hinweg.
  */
 export function deterministicEmbedding(text: string): number[] {
   const values: number[] = [];
@@ -84,7 +84,7 @@ export function deterministicEmbedding(text: string): number[] {
     counter += 1;
   }
 
-  // Auf Laenge 1 bringen, wie es der echte Client auch tut.
+  // Auf Länge 1 bringen, wie es der echte Client auch tut.
   let sum = 0;
   for (const value of values) sum += value * value;
   const length = Math.sqrt(sum);

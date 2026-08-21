@@ -2,7 +2,7 @@ import { logger } from '../logger.js';
 
 /**
  * Zerlegt einen Server-Sent-Events-Strom und gibt den Text der Modellantwort
- * stueckweise zurueck.
+ * stückweise zurück.
  *
  * Eigenes Modul, weil hier zwei Fallen zusammenkommen, die beide nur unter
  * echten Netzbedingungen auftreten - und die man deshalb gezielt testen muss,
@@ -10,14 +10,14 @@ import { logger } from '../logger.js';
  *
  * 1. ZEILENENDEN. Die Spezifikation erlaubt sowohl \n\n als auch \r\n\r\n als
  *    Trennung zwischen zwei Ereignissen. Gemini verwendet \r\n\r\n. Wer nur auf
- *    \n\n prueft, findet nie ein vollstaendiges Ereignis und liefert eine leere
+ *    \n\n prüft, findet nie ein vollständiges Ereignis und liefert eine leere
  *    Antwort aus - ohne Fehler, ohne Hinweis, einfach nichts.
  * 2. PAKETGRENZEN. Ein Ereignis kann mitten durchgeschnitten ankommen, und ein
- *    Mehrbyte-Zeichen ebenso. Deshalb bleibt ein unvollstaendiges Ereignis im
- *    Puffer stehen, und der Decoder laeuft mit `stream: true`.
+ *    Mehrbyte-Zeichen ebenso. Deshalb bleibt ein unvollständiges Ereignis im
+ *    Puffer stehen, und der Decoder läuft mit `stream: true`.
  */
 
-/** Trennung zwischen zwei Ereignissen, mit und ohne Wagenruecklauf. */
+/** Trennung zwischen zwei Ereignissen, mit und ohne Wagenrücklauf. */
 const EVENT_SEPARATOR = /\r?\n\r?\n/;
 const LINE_SEPARATOR = /\r?\n/;
 
@@ -27,12 +27,12 @@ export async function* sseTextChunks(source: AsyncIterable<Uint8Array>): AsyncIt
 
   for await (const part of source) {
     // `stream: true`: ein Mehrbyte-Zeichen kann zwischen zwei Netzpaketen
-    // zerrissen sein. Ohne das entstuende an der Bruchstelle ein Ersatzzeichen
+    // zerrissen sein. Ohne das entstünde an der Bruchstelle ein Ersatzzeichen
     // mitten in einem Umlaut.
     buffer += decoder.decode(part, { stream: true });
 
     const events = buffer.split(EVENT_SEPARATOR);
-    // Das letzte Stueck ist moeglicherweise unvollstaendig und bleibt stehen,
+    // Das letzte Stück ist möglicherweise unvollständig und bleibt stehen,
     // bis der Rest kommt.
     buffer = events.pop() ?? '';
 
@@ -42,7 +42,7 @@ export async function* sseTextChunks(source: AsyncIterable<Uint8Array>): AsyncIt
     }
   }
 
-  // Der Strom ist zu Ende - was noch im Puffer steht, ist vollstaendig.
+  // Der Strom ist zu Ende - was noch im Puffer steht, ist vollständig.
   buffer += decoder.decode();
   const text = textFromEvent(buffer);
   if (text) yield text;
@@ -65,7 +65,7 @@ export function textFromEvent(event: string): string {
     const parts = parsed.candidates?.[0]?.content?.parts ?? [];
     return (
       parts
-        // Denkschritte sind nicht die Antwort. Sie gehoeren nicht ins Fenster
+        // Denkschritte sind nicht die Antwort. Sie gehören nicht ins Fenster
         // des Nutzers und nicht in den gespeicherten Antworttext.
         .filter((part) => part.thought !== true)
         .map((part) => part.text ?? '')

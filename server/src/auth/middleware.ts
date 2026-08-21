@@ -14,9 +14,9 @@ declare global {
 
 /**
  * Setzt `req.userId` oder wirft 401. Wird auf ganze Router gelegt, nicht auf
- * einzelne Routen: eine spaeter hinzugefuegte Route ist damit automatisch
- * geschuetzt. Vergessene Absicherung ist der haeufigste Auth-Fehler, und ein
- * Standardwert "geschuetzt" macht ihn unmoeglich.
+ * einzelne Routen: eine später hinzugefügte Route ist damit automatisch
+ * geschützt. Vergessene Absicherung ist der häufigste Auth-Fehler, und ein
+ * Standardwert "geschützt" macht ihn unmöglich.
  */
 export function requireAuth(req: Request, _res: Response, next: NextFunction): void {
   const header = req.headers.authorization;
@@ -26,7 +26,7 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
   }
   const payload = verifyToken(header.slice('Bearer '.length).trim());
   if (!payload) {
-    next(unauthorized('Token ungueltig oder abgelaufen.', 'invalid_token'));
+    next(unauthorized('Token ungültig oder abgelaufen.', 'invalid_token'));
     return;
   }
   req.userId = payload.sub;
@@ -34,7 +34,7 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
 }
 
 /**
- * Liest `req.userId` und stellt fuer TypeScript sicher, dass er da ist.
+ * Liest `req.userId` und stellt für TypeScript sicher, dass er da ist.
  * Wenn das wirft, fehlt `requireAuth` auf dem Router - ein Programmierfehler,
  * kein Nutzerfehler, deshalb bewusst laut.
  */

@@ -3,7 +3,7 @@ import request from 'supertest';
 import { prisma } from '../db.js';
 
 /**
- * Leert alle Tabellen. `User` reicht nicht - der Embedding-Cache haengt an
+ * Leert alle Tabellen. `User` reicht nicht - der Embedding-Cache hängt an
  * keinem Nutzer. Notebooks und ihre Kinder verschwinden per Cascade.
  */
 export async function resetDatabase(): Promise<void> {
@@ -21,7 +21,7 @@ export interface TestUser {
   id: string;
 }
 
-/** Legt einen Nutzer ueber den echten Registrierungsendpunkt an. */
+/** Legt einen Nutzer über den echten Registrierungsendpunkt an. */
 export async function createUser(app: Express): Promise<TestUser> {
   counter += 1;
   const email = `nutzer${counter}.${Date.now()}@example.test`;

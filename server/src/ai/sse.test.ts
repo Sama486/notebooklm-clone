@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { sseTextChunks, textFromEvent } from './sse.js';
 
-/** Macht aus einer Zeichenkette einen Bytestrom mit fester Paketgroesse. */
+/** Macht aus einer Zeichenkette einen Bytestrom mit fester Paketgrösse. */
 async function* asPackets(text: string, size: number): AsyncIterable<Uint8Array> {
   const bytes = new TextEncoder().encode(text);
   for (let i = 0; i < bytes.length; i += size) yield bytes.slice(i, i + size);
@@ -19,8 +19,8 @@ const textEvent = (text: string) => ({ candidates: [{ content: { parts: [{ text 
 describe('Zerlegung des Ereignisstroms', () => {
   it('liest Ereignisse mit \\r\\n\\r\\n als Trennung', async () => {
     // GENAU DIESER FALL war der Fehler: Gemini trennt seine Ereignisse mit
-    // Wagenruecklauf. Ein Parser, der nur \n\n kennt, findet nie ein
-    // vollstaendiges Ereignis und liefert eine leere Antwort aus - ohne
+    // Wagenrücklauf. Ein Parser, der nur \n\n kennt, findet nie ein
+    // vollständiges Ereignis und liefert eine leere Antwort aus - ohne
     // Fehlermeldung, einfach nichts.
     const stream =
       event(textEvent('Die Antwort '), '\r\n') +
@@ -35,25 +35,25 @@ describe('Zerlegung des Ereignisstroms', () => {
     expect(await collect(sseTextChunks(asPackets(stream, 4096)))).toBe('Eins zwei.');
   });
 
-  it('liefert dasselbe Ergebnis bei jeder Paketgroesse', async () => {
+  it('liefert dasselbe Ergebnis bei jeder Paketgrösse', async () => {
     const stream =
-      event(textEvent('Die Berechtigungspruefung '), '\r\n') +
+      event(textEvent('Die Berechtigungsprüfung '), '\r\n') +
       event(textEvent('steht im Zugriffspfad '), '\r\n') +
       event(textEvent('[1] und nirgends sonst.'), '\r\n');
-    const erwartet = 'Die Berechtigungspruefung steht im Zugriffspfad [1] und nirgends sonst.';
+    const erwartet = 'Die Berechtigungsprüfung steht im Zugriffspfad [1] und nirgends sonst.';
 
     // Ein Ereignis kann an jeder Stelle zerschnitten ankommen - auch mitten in
     // der Trennung zwischen zwei Ereignissen.
     for (const size of [1, 2, 3, 7, 16, 64, 1024]) {
-      expect(await collect(sseTextChunks(asPackets(stream, size))), `Paketgroesse ${size}`).toBe(
+      expect(await collect(sseTextChunks(asPackets(stream, size))), `Paketgrösse ${size}`).toBe(
         erwartet,
       );
     }
   });
 
-  it('behaelt Mehrbyte-Zeichen, die zwischen zwei Paketen zerrissen sind', async () => {
+  it('behält Mehrbyte-Zeichen, die zwischen zwei Paketen zerrissen sind', async () => {
     // Umlaute und Emoji belegen mehrere Bytes. Ohne stream-Modus im Decoder
-    // entstuende an der Bruchstelle ein Ersatzzeichen.
+    // entstünde an der Bruchstelle ein Ersatzzeichen.
     const stream = event(textEvent('Grundsätzliche Prüfung 🔐 der Zuständigkeit.'), '\r\n');
 
     for (const size of [1, 2, 3, 5]) {
@@ -64,27 +64,27 @@ describe('Zerlegung des Ereignisstroms', () => {
     }
   });
 
-  it('liefert ein letztes Ereignis ohne abschliessende Leerzeile aus', async () => {
-    // Manche Server schliessen den Strom direkt hinter dem letzten Ereignis.
+  it('liefert ein letztes Ereignis ohne abschließende Leerzeile aus', async () => {
+    // Manche Server schließen den Strom direkt hinter dem letzten Ereignis.
     const stream = `data: ${JSON.stringify(textEvent('Schluss.'))}`;
     expect(await collect(sseTextChunks(asPackets(stream, 8)))).toBe('Schluss.');
   });
 
-  it('laesst Denkschritte weg', async () => {
-    // Denk-Token sind nicht die Antwort. Sie gehoeren nicht ins Fenster des
+  it('lässt Denkschritte weg', async () => {
+    // Denk-Token sind nicht die Antwort. Sie gehören nicht ins Fenster des
     // Nutzers und nicht in den gespeicherten Antworttext.
     const gedanke = {
       candidates: [
-        { content: { parts: [{ text: 'Ich ueberlege...', thought: true }, { text: 'Antwort.' }] } },
+        { content: { parts: [{ text: 'Ich überlege...', thought: true }, { text: 'Antwort.' }] } },
       ],
     };
     expect(await collect(sseTextChunks(asPackets(event(gedanke, '\r\n'), 4096)))).toBe('Antwort.');
   });
 
-  it('ueberspringt ein unlesbares Ereignis, statt den Strom abzubrechen', async () => {
+  it('überspringt ein unlesbares Ereignis, statt den Strom abzubrechen', async () => {
     const stream =
       event(textEvent('Erstes. '), '\r\n') +
-      'data: {kein gueltiges json\r\n\r\n' +
+      'data: {kein gültiges json\r\n\r\n' +
       event(textEvent('Drittes.'), '\r\n');
 
     expect(await collect(sseTextChunks(asPackets(stream, 4096)))).toBe('Erstes. Drittes.');
@@ -95,7 +95,7 @@ describe('Zerlegung des Ereignisstroms', () => {
     expect(await collect(sseTextChunks(asPackets(stream, 4096)))).toBe('Text.');
   });
 
-  it('gibt bei leerem Strom nichts zurueck', async () => {
+  it('gibt bei leerem Strom nichts zurück', async () => {
     expect(await collect(sseTextChunks(asPackets('', 16)))).toBe('');
   });
 });
@@ -112,7 +112,7 @@ describe('Einzelnes Ereignis', () => {
     expect(textFromEvent('data: [DONE]')).toBe('');
   });
 
-  it('gibt bei einem Ereignis ohne Kandidaten nichts zurueck', () => {
+  it('gibt bei einem Ereignis ohne Kandidaten nichts zurück', () => {
     expect(textFromEvent('data: {"usageMetadata":{"totalTokenCount":12}}')).toBe('');
   });
 });

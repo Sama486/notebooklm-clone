@@ -4,11 +4,11 @@ import { apiRequest, getToken, setToken, setUnauthorizedHandler } from './api.js
 import type { User } from './types.js';
 
 /**
- * Anmeldezustand fuer die gesamte Oberflaeche.
+ * Anmeldezustand für die gesamte Oberfläche.
  *
  * Der Token liegt im localStorage, damit ein Neuladen der Seite nicht abmeldet.
- * Beim Start wird er einmal gegen /api/auth/me geprueft: ein abgelaufener Token
- * fuehrt so sofort zur Anmeldeseite statt erst beim naechsten Klick.
+ * Beim Start wird er einmal gegen /api/auth/me geprüft: ein abgelaufener Token
+ * führt so sofort zur Anmeldeseite statt erst beim nächsten Klick.
  */
 
 interface AuthState {
@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { user: me } = await apiRequest<{ user: User }>('/api/auth/me');
         if (!cancelled) setUser(me);
       } catch {
-        // Token ungueltig oder Server nicht erreichbar - in beiden Faellen
+        // Token ungültig oder Server nicht erreichbar - in beiden Fällen
         // gilt: nicht angemeldet. Die Anmeldeseite ist die sichere Variante.
         if (!cancelled) logout();
       } finally {
@@ -89,6 +89,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth(): AuthState {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth ausserhalb von AuthProvider verwendet');
+  if (!context) throw new Error('useAuth außerhalb von AuthProvider verwendet');
   return context;
 }

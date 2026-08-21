@@ -3,7 +3,7 @@
  *
  * Alles andere - Datenbankfehler, Programmierfehler, Fehler aus Bibliotheken -
  * wird von der zentralen Fehlerbehandlung zu einem neutralen 500 ohne Details.
- * Damit kann kein Stack Trace und keine Datenbankmeldung nach aussen lecken.
+ * Damit kann kein Stack Trace und keine Datenbankmeldung nach außen lecken.
  */
 export class AppError extends Error {
   constructor(
@@ -24,8 +24,8 @@ export const unauthorized = (message = 'Nicht angemeldet.', code = 'unauthorized
 
 /**
  * Wird auch dann verwendet, wenn die Ressource existiert, aber einem anderen
- * Nutzer gehoert. Ein 403 wuerde verraten, dass die ID vergeben ist - damit
- * liessen sich fremde IDs durch Ausprobieren bestaetigen.
+ * Nutzer gehört. Ein 403 würde verraten, dass die ID vergeben ist - damit
+ * ließen sich fremde IDs durch Ausprobieren bestätigen.
  */
 export const notFound = (message = 'Nicht gefunden.', code = 'not_found') =>
   new AppError(404, code, message);

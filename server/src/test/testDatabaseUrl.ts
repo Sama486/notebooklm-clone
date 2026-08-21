@@ -5,10 +5,10 @@ import dotenv from 'dotenv';
 /**
  * Verbindungszeichenfolge der Testdatenbank, aus der .env im Repo-Wurzel-
  * verzeichnis. Wird von vitest.config.ts und vom globalSetup gebraucht - beide
- * laufen ausserhalb der normalen Konfiguration und lesen deshalb hier.
+ * laufen außerhalb der normalen Konfiguration und lesen deshalb hier.
  *
- * Faellt auf DATABASE_URL zurueck, wenn TEST_DATABASE_URL fehlt. Das ist
- * bequem, aber die Testlaeufe leeren dann die Entwicklungsdatenbank; der
+ * Fällt auf DATABASE_URL zurück, wenn TEST_DATABASE_URL fehlt. Das ist
+ * bequem, aber die Testläufe leeren dann die Entwicklungsdatenbank; der
  * Hinweis dazu steht in .env.example.
  */
 export function resolveTestDatabaseUrl(): string {

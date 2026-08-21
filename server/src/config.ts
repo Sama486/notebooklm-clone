@@ -14,7 +14,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4310),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL fehlt'),
-  // Kurze Geheimnisse sind der haeufigste Auth-Fehler - deshalb erzwungen.
+  // Kurze Geheimnisse sind der häufigste Auth-Fehler - deshalb erzwungen.
   JWT_SECRET: z.string().min(32, 'JWT_SECRET muss mindestens 32 Zeichen haben'),
   GEMINI_API_KEY: z.string().default(''),
   CORS_ORIGIN: z.string().default('http://localhost:5310'),
@@ -23,15 +23,15 @@ const envSchema = z.object({
 const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {
   const details = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n');
-  throw new Error(`Ungueltige Umgebungskonfiguration:\n${details}`);
+  throw new Error(`Ungültige Umgebungskonfiguration:\n${details}`);
 }
 export const env = parsed.data;
 
 /**
- * EINE Quelle der Wahrheit fuer alle Grenzwerte des Systems.
+ * EINE Quelle der Wahrheit für alle Grenzwerte des Systems.
  *
- * Jede Zahl, die eine Regel ausdrueckt, steht hier - nicht verstreut im Code.
- * Wer eine Grenze aendern will, aendert sie an genau einer Stelle.
+ * Jede Zahl, die eine Regel ausdrückt, steht hier - nicht verstreut im Code.
+ * Wer eine Grenze ändern will, ändert sie an genau einer Stelle.
  */
 export const limits = {
   auth: {
@@ -44,7 +44,7 @@ export const limits = {
   },
 
   body: {
-    // Global klein. Nur der Upload-Endpunkt bekommt eine eigene, groessere Grenze.
+    // Global klein. Nur der Upload-Endpunkt bekommt eine eigene, größere Grenze.
     json: '128kb',
     pdfUpload: 15 * 1024 * 1024,
     pastedText: 400_000, // Zeichen, entspricht grob einem 150-Seiten-Dokument
@@ -52,17 +52,17 @@ export const limits = {
 
   source: {
     titleMax: 200,
-    // Obergrenze fuer extrahierten Text je Quelle. Schuetzt Speicher und Kosten,
-    // wenn jemand ein praepariertes Dokument mit Millionen Zeichen hochlaedt.
+    // Obergrenze für extrahierten Text je Quelle. Schützt Speicher und Kosten,
+    // wenn jemand ein präpariertes Dokument mit Millionen Zeichen hochlädt.
     extractedTextMax: 1_000_000,
     maxPerNotebook: 50,
   },
 
   chunking: {
-    // Zielgroesse in Token; die Umrechnung Token->Zeichen steht in ingest/chunk.ts.
+    // Zielgrösse in Token; die Umrechnung Token->Zeichen steht in ingest/chunk.ts.
     targetTokens: 1200,
     overlapTokens: 180,
-    minTokens: 40, // kleinere Reste werden an den Vorgaenger angehaengt
+    minTokens: 40, // kleinere Reste werden an den Vorgänger angehängt
   },
 
   embedding: {
@@ -74,17 +74,17 @@ export const limits = {
   },
 
   chat: {
-    // Ausgewaehlt ueber scripts/compare-models.mjs - zwanzig Fragen gegen zwei
-    // Modelle, gezaehlt wurde, wie oft ein Zitat-Marker fehlt, eine erfundene
-    // Nummer traegt oder mitten im Wort steht. Ergebnis im README.
+    // Ausgewählt über scripts/compare-models.mjs - zwanzig Fragen gegen zwei
+    // Modelle, gezählt wurde, wie oft ein Zitat-Marker fehlt, eine erfundene
+    // Nummer trägt oder mitten im Wort steht. Ergebnis im README.
     //
     // Nicht gemini-3-flash: dort erlaubt die kostenlose Stufe nur zwanzig
-    // Anfragen am Tag, was fuer eine Demo nicht reicht.
+    // Anfragen am Tag, was für eine Demo nicht reicht.
     model: 'gemini-3.5-flash-lite',
     topK: 8, // Anzahl der Textstellen, die in den Prompt gehen
     questionMax: 2000,
-    historyMessages: 6, // wie viel Gespraechsverlauf in den Prompt geht
-    snippetChars: 300, // Laenge der im Zitat mitgelieferten Vorschau
+    historyMessages: 6, // wie viel Gesprächsverlauf in den Prompt geht
+    snippetChars: 300, // Länge der im Zitat mitgelieferten Vorschau
   },
 
   fetchUrl: {
@@ -110,7 +110,7 @@ export const limits = {
 export const isProduction = env.NODE_ENV === 'production';
 export const isTest = env.NODE_ENV === 'test';
 
-/** Erlaubte Frontend-Herkuenfte fuer CORS, aus der kommagetrennten Variable. */
+/** Erlaubte Frontend-Herkünfte für CORS, aus der kommagetrennten Variable. */
 export const corsOrigins = env.CORS_ORIGIN.split(',')
   .map((o) => o.trim())
   .filter((o) => o.length > 0);

@@ -91,7 +91,7 @@ export function SourcesPanel({
         {sources.length === 0 ? (
           <li className="px-1 py-4 text-sm text-slate-500">
             Noch keine Quelle. Ohne Quelle kann der Chat nichts beantworten - er antwortet
-            ausschliesslich aus dem, was hier steht.
+            ausschließlich aus dem, was hier steht.
           </li>
         ) : (
           sources.map((source) => (
@@ -104,7 +104,7 @@ export function SourcesPanel({
               }`}
             >
               <div className="flex items-start gap-2">
-                {/* Nur ausgewaehlte Quellen werden durchsucht. */}
+                {/* Nur ausgewählte Quellen werden durchsucht. */}
                 <input
                   type="checkbox"
                   checked={source.selected}
@@ -117,7 +117,7 @@ export function SourcesPanel({
                       }),
                     )
                   }
-                  title="Bei Fragen beruecksichtigen"
+                  title="Bei Fragen berücksichtigen"
                   className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500 disabled:opacity-40"
                 />
 
@@ -146,7 +146,7 @@ export function SourcesPanel({
                       }),
                     )
                   }
-                  title="Quelle loeschen"
+                  title="Quelle löschen"
                   className="shrink-0 rounded px-1.5 py-0.5 text-xs text-slate-400 transition hover:bg-red-50 hover:text-red-700"
                 >
                   ✕
@@ -195,16 +195,16 @@ function PdfForm({ notebookId, busy, run }: FormProps) {
     const file = inputRef.current?.files?.[0];
     if (!file) return;
 
-    // Vorabpruefung im Browser: erspart dem Nutzer, 20 MB hochzuladen und dann
+    // Vorabprüfung im Browser: erspart dem Nutzer, 20 MB hochzuladen und dann
     // ein 413 zu bekommen. Die verbindliche Grenze steht trotzdem auf dem
-    // Server - diese hier laesst sich umgehen.
+    // Server - diese hier lässt sich umgehen.
     if (file.size > MAX_PDF_BYTES) {
-      setLocalError('Die Datei ist groesser als 15 MB.');
+      setLocalError('Die Datei ist größer als 15 MB.');
       return;
     }
     setLocalError(null);
 
-    // Der Dateiname wird als Titel vorgeschlagen, mehr nicht - er beruehrt
+    // Der Dateiname wird als Titel vorgeschlagen, mehr nicht - er berührt
     // serverseitig keinen Pfad.
     const title = file.name.replace(/\.pdf$/i, '').slice(0, 200) || 'Dokument';
 
@@ -268,7 +268,7 @@ function TextForm({ notebookId, busy, run }: FormProps) {
       <textarea
         value={content}
         onChange={(event) => setContent(event.target.value)}
-        placeholder="Text einfuegen"
+        placeholder="Text einfügen"
         required
         rows={4}
         className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-xs focus:border-sky-500 focus:outline-none"
@@ -278,7 +278,7 @@ function TextForm({ notebookId, busy, run }: FormProps) {
         disabled={busy}
         className="w-full rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-sky-700 disabled:opacity-50"
       >
-        Hinzufuegen
+        Hinzufügen
       </button>
     </form>
   );

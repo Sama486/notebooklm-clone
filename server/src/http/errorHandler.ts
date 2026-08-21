@@ -9,17 +9,17 @@ export const notFoundHandler: RequestHandler = (_req, res) => {
 
 /**
  * Zentrale Fehlerbehandlung - die einzige Stelle, die Fehler in HTTP-Antworten
- * uebersetzt.
+ * übersetzt.
  *
- * Die Regel dahinter: nur `AppError` traegt eine Meldung nach aussen. Alles
- * andere wird intern vollstaendig geloggt und extern zu einem neutralen 500.
- * Damit gibt es keinen Pfad, ueber den ein Stack Trace, ein Prisma-Fehlertext
+ * Die Regel dahinter: nur `AppError` trägt eine Meldung nach außen. Alles
+ * andere wird intern vollständig geloggt und extern zu einem neutralen 500.
+ * Damit gibt es keinen Pfad, über den ein Stack Trace, ein Prisma-Fehlertext
  * oder ein Dateipfad beim Client landen kann.
  */
 export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   if (res.headersSent) {
-    // Beim Streamen sind die Header laengst raus. Mehr als das Beenden der
-    // Verbindung ist hier nicht moeglich; geloggt wird trotzdem.
+    // Beim Streamen sind die Header längst raus. Mehr als das Beenden der
+    // Verbindung ist hier nicht möglich; geloggt wird trotzdem.
     logger.error('Fehler nach begonnener Antwort', {
       path: req.path,
       ...describeError(error),
@@ -33,16 +33,16 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
     return;
   }
 
-  // Body-Parser meldet zu grosse oder kaputte Nutzlast als Fehler mit `type`.
+  // Body-Parser meldet zu große oder kaputte Nutzlast als Fehler mit `type`.
   const parserType = (error as { type?: string } | null)?.type;
   if (parserType === 'entity.too.large') {
     res.status(413).json({
-      error: { code: 'payload_too_large', message: 'Anfrage zu gross.' },
+      error: { code: 'payload_too_large', message: 'Anfrage zu groß.' },
     });
     return;
   }
   if (parserType === 'entity.parse.failed') {
-    res.status(400).json({ error: { code: 'bad_json', message: 'Ungueltiges JSON.' } });
+    res.status(400).json({ error: { code: 'bad_json', message: 'Ungültiges JSON.' } });
     return;
   }
 

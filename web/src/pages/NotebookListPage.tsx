@@ -42,12 +42,12 @@ export function NotebookListPage() {
   }
 
   async function remove(notebook: NotebookSummary) {
-    if (!confirm(`"${notebook.title}" mit allen Quellen loeschen?`)) return;
+    if (!confirm(`"${notebook.title}" mit allen Quellen löschen?`)) return;
     try {
       await apiRequest(`/api/notebooks/${notebook.id}`, { method: 'DELETE' });
       await load();
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Loeschen fehlgeschlagen.');
+      setError(caught instanceof ApiError ? caught.message : 'Löschen fehlgeschlagen.');
     }
   }
 
@@ -71,7 +71,7 @@ export function NotebookListPage() {
         <input
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder="Titel des neuen Notebooks"
+          placeholder="Titel des neün Notebooks"
           maxLength={120}
           className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
         />
@@ -96,7 +96,7 @@ export function NotebookListPage() {
         ) : notebooks.length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center">
             <p className="text-sm text-slate-600">
-              Noch kein Notebook. Leg oben eines an, fuege dann Quellen hinzu und stell Fragen dazu.
+              Noch kein Notebook. Leg oben eines an, füge dann Quellen hinzu und stell Fragen dazu.
             </p>
           </div>
         ) : (
@@ -118,7 +118,7 @@ export function NotebookListPage() {
                   onClick={() => void remove(notebook)}
                   className="ml-4 shrink-0 rounded-md px-2 py-1 text-sm text-slate-500 transition hover:bg-red-50 hover:text-red-700"
                 >
-                  Loeschen
+                  Löschen
                 </button>
               </li>
             ))}

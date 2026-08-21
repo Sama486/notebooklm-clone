@@ -1,13 +1,13 @@
 import net from 'node:net';
 
 /**
- * Entscheidet, ob eine IP-Adresse fuer ausgehende Abrufe gesperrt ist.
+ * Entscheidet, ob eine IP-Adresse für ausgehende Abrufe gesperrt ist.
  *
- * Reine Funktion ohne Netz und ohne Datenbank - deshalb vollstaendig und billig
+ * Reine Funktion ohne Netz und ohne Datenbank - deshalb vollständig und billig
  * testbar (privateAddress.test.ts).
  *
  * Die Sperrlisten sind mit `net.BlockList` gebaut statt mit einem selbst
- * geschriebenen CIDR-Vergleich: die Bitrechnerei fuer IPv6 ist genau die Sorte
+ * geschriebenen CIDR-Vergleich: die Bitrechnerei für IPv6 ist genau die Sorte
  * Code, die man falsch schreibt und in der ein Fehler still bleibt.
  */
 
@@ -17,7 +17,7 @@ v4.addSubnet('0.0.0.0', 8, 'ipv4');
 v4.addSubnet('10.0.0.0', 8, 'ipv4'); // privat
 v4.addSubnet('100.64.0.0', 10, 'ipv4'); // CGNAT
 v4.addSubnet('127.0.0.0', 8, 'ipv4'); // Loopback - nicht nur 127.0.0.1
-v4.addSubnet('169.254.0.0', 16, 'ipv4'); // Link-Local; enthaelt 169.254.169.254 (Cloud-Metadaten)
+v4.addSubnet('169.254.0.0', 16, 'ipv4'); // Link-Local; enthält 169.254.169.254 (Cloud-Metadaten)
 v4.addSubnet('172.16.0.0', 12, 'ipv4'); // privat
 v4.addSubnet('192.0.0.0', 24, 'ipv4'); // IETF-Protokollzuweisungen
 v4.addSubnet('192.0.2.0', 24, 'ipv4'); // TEST-NET-1
@@ -42,9 +42,9 @@ v6.addSubnet('ff00::', 8, 'ipv6'); // Multicast
 /**
  * Holt eine in IPv6 eingebettete IPv4-Adresse heraus.
  *
- * Ohne diesen Schritt laesst sich jede IPv4-Sperre umgehen: `::ffff:127.0.0.1`
+ * Ohne diesen Schritt lässt sich jede IPv4-Sperre umgehen: `::ffff:127.0.0.1`
  * ist dieselbe Maschine wie `127.0.0.1`, steht aber in keiner IPv6-Sperrliste.
- * Dasselbe gilt fuer NAT64 (64:ff9b::/96) und 6to4 (2002::/16).
+ * Dasselbe gilt für NAT64 (64:ff9b::/96) und 6to4 (2002::/16).
  */
 export function embeddedIpv4(address: string): string | null {
   const lower = address.toLowerCase();
@@ -76,11 +76,11 @@ function fromWords(high: number | undefined, low: number | undefined): string | 
   return [high >> 8, high & 0xff, low >> 8, low & 0xff].join('.');
 }
 
-/** Zerlegt eine IPv6-Adresse in acht 16-Bit-Woerter; `null`, wenn unlesbar. */
+/** Zerlegt eine IPv6-Adresse in acht 16-Bit-Wörter; `null`, wenn unlesbar. */
 function expandIpv6(address: string): number[] | null {
   if (!net.isIPv6(address)) return null;
 
-  // Eine angehaengte Zone (fe80::1%eth0) gehoert nicht zur Adresse.
+  // Eine angehängte Zone (fe80::1%eth0) gehört nicht zur Adresse.
   const bare = address.split('%')[0] ?? address;
   const [headPart = '', tailPart] = bare.split('::');
   const split = (part: string) => (part === '' ? [] : part.split(':'));
@@ -100,7 +100,7 @@ function expandIpv6(address: string): number[] | null {
  *
  * Der Standardwert ist bewusst "gesperrt": eine Adresse, die weder als IPv4
  * noch als IPv6 lesbar ist, wird abgelehnt statt durchgelassen. Der sichere Weg
- * ist der, den man bekommt, wenn man nichts weiss.
+ * ist der, den man bekommt, wenn man nichts weiß.
  */
 export function isBlockedAddress(address: string): boolean {
   const embedded = embeddedIpv4(address);

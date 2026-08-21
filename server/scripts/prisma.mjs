@@ -1,7 +1,7 @@
 // Startet die Prisma-CLI mit der .env aus dem Repo-Wurzelverzeichnis.
 //
 // Prisma sucht die .env nur neben dem Schema oder im Arbeitsverzeichnis. Unsere
-// liegt eine Ebene hoeher, damit Server und Frontend sich eine einzige Datei
+// liegt eine Ebene höher, damit Server und Frontend sich eine einzige Datei
 // teilen. Auf Render existiert keine .env - dotenv findet dann nichts, und die
 // Werte kommen wie vorgesehen aus der Umgebung.
 import { spawnSync } from 'node:child_process';

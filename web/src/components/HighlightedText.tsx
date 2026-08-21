@@ -6,13 +6,13 @@ import { useEffect, useRef } from 'react';
  * DIE SICHERHEITSRELEVANTE STELLE DES FRONTENDS.
  *
  * Der angezeigte Text stammt aus einer hochgeladenen Datei oder einer fremden
- * Website - also von jemandem, dem wir nicht vertrauen. Der naheliegende Weg
- * waere, um die Fundstelle ein <mark> zu bauen und das Ganze per
- * dangerouslySetInnerHTML einzusetzen. Das waere eine XSS-Luecke: ein Dokument
- * mit <script> oder <img onerror=...> im Text wuerde bei jedem Betrachter
- * ausgefuehrt.
+ * Website - also von jemandem, dem wir nicht vertraün. Der naheliegende Weg
+ * wäre, um die Fundstelle ein <mark> zu baün und das Ganze per
+ * dangerouslySetInnerHTML einzusetzen. Das wäre eine XSS-Lücke: ein Dokument
+ * mit <script> oder <img onerror=...> im Text würde bei jedem Betrachter
+ * ausgeführt.
  *
- * Stattdessen wird der Text in drei Stuecke geschnitten und als drei React-
+ * Stattdessen wird der Text in drei Stücke geschnitten und als drei React-
  * Kinder gerendert. React setzt Zeichenketten als Textknoten ein, nie als
  * Markup - "<script>" erscheint dann als die acht Zeichen, die es ist. Es gibt
  * in diesem Projekt keine Stelle, an der Dokumentinhalt oder Modellausgabe zu
@@ -21,7 +21,7 @@ import { useEffect, useRef } from 'react';
 
 interface HighlightedTextProps {
   text: string;
-  /** Zeichen-Position, ab der hervorgehoben wird; `null` fuer keine Hervorhebung. */
+  /** Zeichen-Position, ab der hervorgehoben wird; `null` für keine Hervorhebung. */
   charStart: number | null;
   charEnd: number | null;
 }
@@ -29,7 +29,7 @@ interface HighlightedTextProps {
 export function HighlightedText({ text, charStart, charEnd }: HighlightedTextProps) {
   const markRef = useRef<HTMLElement>(null);
 
-  // Zur hervorgehobenen Stelle scrollen, sobald sie sich aendert.
+  // Zur hervorgehobenen Stelle scrollen, sobald sie sich ändert.
   useEffect(() => {
     markRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [charStart, charEnd]);
@@ -45,7 +45,7 @@ export function HighlightedText({ text, charStart, charEnd }: HighlightedTextPro
     return <span className="whitespace-pre-wrap break-words">{text}</span>;
   }
 
-  // Auf die Textlaenge begrenzen: veraltete Positionen wuerden sonst einen
+  // Auf die Textlänge begrenzen: veraltete Positionen würden sonst einen
   // leeren oder falschen Ausschnitt ergeben.
   const start = Math.min(charStart, text.length);
   const end = Math.min(charEnd, text.length);

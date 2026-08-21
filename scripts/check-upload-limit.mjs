@@ -1,22 +1,21 @@
 /**
- * Wie gross darf eine Anfrage an die oeffentliche API
- * tatsaechlich sein?
+ * Wie groß darf eine Anfrage an die öffentliche API tatsächlich sein?
  *
- * Render dokumentiert keine Obergrenze fuer die Anfragegroesse. Verlassen kann
- * man sich nur auf eine Messung - und zwar frueh, weil die Grenze bestimmt,
- * wie gross ein hochladbares PDF sein darf und was das Frontend vorher abfangen
+ * Render dokumentiert keine Obergrenze für die Anfragegrösse. Verlassen kann
+ * man sich nur auf eine Messung - und zwar früh, weil die Grenze bestimmt,
+ * wie groß ein hochladbares PDF sein darf und was das Frontend vorher abfangen
  * muss.
  *
  *   node scripts/check-upload-limit.mjs https://notebooklm-clone-api.onrender.com
  *
- * Legt dafuer ein Wegwerf-Konto an und laedt PDFs wachsender Groesse hoch.
- * Erwartet wird, dass die eigene Grenze aus server/src/config.ts zuerst greift
+ * Legt dafür ein Wegwerf-Konto an und lädt PDFs wachsender Größe hoch.
+ * Erwartet wird, dass die eigene Grenze aus server/src/config.ts zürst greift
  * (HTTP 413) - und nicht der Proxy mit einem Verbindungsabbruch, den niemand
- * dem Nutzer erklaeren kann.
+ * dem Nutzer erklären kann.
  */
 const base = process.argv[2] ?? 'http://localhost:4310';
 
-/** Minimales gueltiges PDF, auf die gewuenschte Groesse aufgefuellt. */
+/** Minimales gültiges PDF, auf die gewünschte Größe aufgefüllt. */
 function makePaddedPdf(targetBytes) {
   const head = [
     '%PDF-1.4',
@@ -26,7 +25,7 @@ function makePaddedPdf(targetBytes) {
       '/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >> endobj',
     '4 0 obj << /Length 60 >>',
     'stream',
-    'BT /F1 12 Tf 72 720 Td (Messung der Anfragegroesse.) Tj ET',
+    'BT /F1 12 Tf 72 720 Td (Messung der Anfragegrösse.) Tj ET',
     'endstream endobj',
     '5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
     'trailer << /Size 6 /Root 1 0 R >>',
@@ -34,8 +33,8 @@ function makePaddedPdf(targetBytes) {
     '',
   ].join('\n');
 
-  // Fuellmaterial hinter %%EOF. PDF-Leser ignorieren, was nach dem Dateiende
-  // steht; fuer die Uebertragung zaehlen die Bytes trotzdem.
+  // Füllmaterial hinter %%EOF. PDF-Leser ignorieren, was nach dem Dateiende
+  // steht; für die Übertragung zählen die Bytes trotzdem.
   const padding = Math.max(0, targetBytes - Buffer.byteLength(head) - 2);
   return Buffer.concat([Buffer.from(head, 'latin1'), Buffer.from('%'.repeat(padding)), Buffer.from('\n')]);
 }
@@ -59,12 +58,12 @@ async function main() {
   const notebookResponse = await fetch(`${base}/api/notebooks`, {
     method: 'POST',
     headers: { ...authHeader, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title: 'Messung Anfragegroesse' }),
+    body: JSON.stringify({ title: 'Messung Anfragegrösse' }),
   });
   const { notebook } = await notebookResponse.json();
 
   console.log(`Ziel: ${base}`);
-  console.log('Groesse   Status  Dauer     Antwort');
+  console.log('Größe   Status  Daür     Antwort');
   console.log('-'.repeat(64));
 
   for (const megabytes of [1, 5, 10, 14, 15, 16, 20, 30]) {
@@ -94,11 +93,11 @@ async function main() {
     );
   }
 
-  // Aufraeumen: das Wegwerf-Konto und alles daran haengende verschwindet mit
+  // Aufräumen: das Wegwerf-Konto und alles daran hängende verschwindet mit
   // dem Notebook nicht - deshalb bleibt es stehen und wird im README als
   // bekannter Nebeneffekt der Messung benannt.
   await fetch(`${base}/api/notebooks/${notebook.id}`, { method: 'DELETE', headers: authHeader });
-  console.log('\nNotebook der Messung wieder geloescht.');
+  console.log('\nNotebook der Messung wieder gelöscht.');
 }
 
 await main();

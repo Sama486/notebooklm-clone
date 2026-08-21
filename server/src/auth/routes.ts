@@ -18,9 +18,9 @@ import { requireAuth, currentUserId } from './middleware.js';
 export const authRouter = Router();
 
 /**
- * Eine einzige Meldung fuer "E-Mail unbekannt" und "Passwort falsch". Zwei
- * unterschiedliche Meldungen wuerden aus dem Anmeldeformular eine Auskunft
- * darueber machen, welche Adressen registriert sind.
+ * Eine einzige Meldung für "E-Mail unbekannt" und "Passwort falsch". Zwei
+ * unterschiedliche Meldungen würden aus dem Anmeldeformular eine Auskunft
+ * darüber machen, welche Adressen registriert sind.
  */
 const LOGIN_FAILED = 'E-Mail oder Passwort ist falsch.';
 
@@ -32,9 +32,9 @@ authRouter.post(
     const passwordHash = await hashPassword(password);
 
     try {
-      // Eindeutigkeit erzwingt die Datenbank ueber @unique, nicht ein
-      // vorgelagertes findUnique. Ein Vorabtest waere ein Wettlauf: zwei
-      // gleichzeitige Registrierungen kaemen beide durch die Pruefung.
+      // Eindeutigkeit erzwingt die Datenbank über @unique, nicht ein
+      // vorgelagertes findUnique. Ein Vorabtest wäre ein Wettlauf: zwei
+      // gleichzeitige Registrierungen kämen beide durch die Prüfung.
       const user = await prisma.user.create({
         data: { email, passwordHash },
         select: { id: true, email: true },
@@ -58,13 +58,13 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const { email, password } = parseBody(credentialsSchema, req);
 
-    // Zaehlt den Versuch und wirft 429, wenn zu viele auf dieses Konto
-    // entfallen. Der Zaehler liegt in der Datenbank - Begruendung und Messung
+    // Zählt den Versuch und wirft 429, wenn zu viele auf dieses Konto
+    // entfallen. Der Zähler liegt in der Datenbank - Begründung und Messung
     // in loginThrottle.ts.
     await registerLoginAttempt(email);
 
-    // Gelegentlich abgelaufene Fenster wegraeumen. Bei etwa jedem
-    // fuenfzigsten Anmeldeversuch, damit die Tabelle nicht unbegrenzt waechst
+    // Gelegentlich abgelaufene Fenster wegräumen. Bei etwa jedem
+    // fünfzigsten Anmeldeversuch, damit die Tabelle nicht unbegrenzt wächst
     // und trotzdem kein Zeitgeber im Prozess laufen muss.
     if (Math.random() < 0.02) void cleanupExpiredAttempts().catch(() => undefined);
 
@@ -79,8 +79,8 @@ authRouter.post(
       throw unauthorized(LOGIN_FAILED, 'login_failed');
     }
 
-    // Erfolgreiche Anmeldung setzt den Zaehler zurueck - sonst waere jemand,
-    // der sich mehrfach vertippt hat, beim naechsten Mal ausgesperrt.
+    // Erfolgreiche Anmeldung setzt den Zähler zurück - sonst wäre jemand,
+    // der sich mehrfach vertippt hat, beim nächsten Mal ausgesperrt.
     await clearLoginAttempts(email);
 
     res.json({
@@ -90,7 +90,7 @@ authRouter.post(
   }),
 );
 
-/** Bestaetigt dem Frontend, dass der gespeicherte Token noch gilt. */
+/** Bestätigt dem Frontend, dass der gespeicherte Token noch gilt. */
 authRouter.get(
   '/me',
   requireAuth,

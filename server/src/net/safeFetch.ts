@@ -7,25 +7,25 @@ import { badRequest, unprocessable } from '../http/errors.js';
 import { isBlockedAddress } from './privateAddress.js';
 
 /**
- * Abruf einer vom Nutzer angegebenen URL - die Angriffsflaeche, die bei
- * RAG-Anwendungen am haeufigsten offen bleibt (SSRF).
+ * Abruf einer vom Nutzer angegebenen URL - die Angriffsfläche, die bei
+ * RAG-Anwendungen am häufigsten offen bleibt (SSRF).
  *
  * Ohne Schutz bestimmt ein Fremder, welche Adresse unser Server aufruft, und
- * bekommt die Antwort als Dokumentinhalt zurueckgeliefert. Das Ziel ist selten
+ * bekommt die Antwort als Dokumentinhalt zurückgeliefert. Das Ziel ist selten
  * das offene Internet, sondern das, was nur von innen erreichbar ist: Cloud-
- * Metadaten (169.254.169.254), interne Verwaltungsoberflaechen, die Datenbank.
+ * Metadaten (169.254.169.254), interne Verwaltungsoberflächen, die Datenbank.
  *
- * Fuenf Massnahmen, die einzeln jeweils umgehbar waeren:
+ * Fünf Maßnahmen, die einzeln jeweils umgehbar wären:
  *
  * 1. Nur http und https. Andernfalls liest "file://" lokale Dateien.
- * 2. Alle aufgeloesten Adressen pruefen, nicht nur die erste. Ein Angreifer
- *    kann fuer denselben Namen eine oeffentliche UND eine private Adresse
- *    hinterlegen; wer nur die erste prueft, faellt auf die zweite herein.
- * 3. Die geprueffte IP an die Verbindung binden (siehe "lookup" weiter unten).
- * 4. Jede Weiterleitung erneut vollstaendig pruefen. Eine Umleitung nach innen
+ * 2. Alle aufgelösten Adressen prüfen, nicht nur die erste. Ein Angreifer
+ *    kann für denselben Namen eine öffentliche UND eine private Adresse
+ *    hinterlegen; wer nur die erste prüft, fällt auf die zweite herein.
+ * 3. Die geprüffte IP an die Verbindung binden (siehe "lookup" weiter unten).
+ * 4. Jede Weiterleitung erneut vollständig prüfen. Eine Umleitung nach innen
  *    ist der Standardtrick, weil die erste URL harmlos aussieht.
- * 5. Zeitlimit und Groessengrenze, damit ein langsamer oder endloser Server
- *    keine Verbindung und keinen Speicher dauerhaft bindet.
+ * 5. Zeitlimit und Grössengrenze, damit ein langsamer oder endloser Server
+ *    keine Verbindung und keinen Speicher daürhaft bindet.
  */
 
 export interface FetchedDocument {
@@ -58,8 +58,8 @@ export async function fetchExternalUrl(rawUrl: string): Promise<FetchedDocument>
     }
 
     // Relative Weiterleitungen sind erlaubt und werden gegen die aktuelle URL
-    // aufgeloest. Danach beginnt die Pruefung wieder von vorn - inklusive
-    // Schema-Pruefung und DNS-Aufloesung.
+    // aufgelöst. Danach beginnt die Prüfung wieder von vorn - inklusive
+    // Schema-Prüfung und DNS-Auflösung.
     current = parseAndCheckScheme(new URL(location, current).toString());
   }
 
@@ -71,12 +71,12 @@ function parseAndCheckScheme(rawUrl: string): URL {
   try {
     url = new URL(rawUrl);
   } catch {
-    throw badRequest('Keine gueltige URL.', 'invalid_url');
+    throw badRequest('Keine gültige URL.', 'invalid_url');
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw badRequest('Nur http und https sind erlaubt.', 'unsupported_scheme');
   }
-  // Zugangsdaten in der URL wuerden mitgeschickt; sie haben hier nichts verloren.
+  // Zugangsdaten in der URL würden mitgeschickt; sie haben hier nichts verloren.
   if (url.username || url.password) {
     throw badRequest('URLs mit Zugangsdaten sind nicht erlaubt.', 'credentials_in_url');
   }
@@ -84,24 +84,24 @@ function parseAndCheckScheme(rawUrl: string): URL {
 }
 
 /**
- * Loest den Hostnamen auf und gibt die Adresse zurueck, die verwendet werden
+ * Löst den Hostnamen auf und gibt die Adresse zurück, die verwendet werden
  * darf - oder wirft.
  *
- * Geprueft werden ALLE zurueckgegebenen A- und AAAA-Adressen. Eine einzige
- * gesperrte Adresse fuehrt zur Ablehnung des ganzen Namens: waere nur die
- * gewaehlte Adresse geprueft, koennte ein Angreifer ueber die Reihenfolge im
- * DNS steuern, welche wir nehmen.
+ * Geprüft werden ALLE zurückgegebenen A- und AAAA-Adressen. Eine einzige
+ * gesperrte Adresse führt zur Ablehnung des ganzen Namens: wäre nur die
+ * gewählte Adresse geprüft, könnte ein Angreifer über die Reihenfolge im
+ * DNS steürn, welche wir nehmen.
  */
 async function resolveToSafeAddress(hostname: string): Promise<LookupAddress> {
   let addresses: LookupAddress[];
   try {
     addresses = await dns.lookup(hostname, { all: true, verbatim: true });
   } catch {
-    throw unprocessable('Der Hostname liess sich nicht aufloesen.', 'dns_failed');
+    throw unprocessable('Der Hostname ließ sich nicht auflösen.', 'dns_failed');
   }
 
   const first = addresses[0];
-  if (!first) throw unprocessable('Der Hostname liess sich nicht aufloesen.', 'dns_failed');
+  if (!first) throw unprocessable('Der Hostname ließ sich nicht auflösen.', 'dns_failed');
 
   for (const entry of addresses) {
     if (isBlockedAddress(entry.address)) {
@@ -123,7 +123,7 @@ interface RawResponse {
 function requestOnce(url: URL, pinned: LookupAddress, deadline: number): Promise<RawResponse> {
   const transport = url.protocol === 'https:' ? https : http;
   const remaining = deadline - Date.now();
-  if (remaining <= 0) throw unprocessable('Zeitlimit ueberschritten.', 'url_timeout');
+  if (remaining <= 0) throw unprocessable('Zeitlimit überschritten.', 'url_timeout');
 
   return new Promise<RawResponse>((resolve, reject) => {
     const request = transport.request(
@@ -135,26 +135,26 @@ function requestOnce(url: URL, pinned: LookupAddress, deadline: number): Promise
           // Ehrlicher Absender statt getarnter Browser-Kennung.
           'User-Agent': 'notebooklm-clone/1.0 (+Quellenimport)',
           Accept: 'text/html,application/xhtml+xml,text/plain;q=0.9',
-          // Keine Kompression: die Groessengrenze soll auf den echten Bytes
+          // Keine Kompression: die Grössengrenze soll auf den echten Bytes
           // greifen, nicht auf der komprimierten Fassung. Ein "Zip-Bomben"-
-          // Dokument waere sonst komprimiert winzig und entpackt riesig.
+          // Dokument wäre sonst komprimiert winzig und entpackt riesig.
           'Accept-Encoding': 'identity',
         },
         /**
          * DAS ist der Kern der SSRF-Abwehr, und der Teil, den Checklisten
-         * ueblicherweise auslassen.
+         * üblicherweise auslassen.
          *
-         * Ohne dieses "lookup" wuerde der HTTP-Client den Namen ein zweites Mal
-         * aufloesen - nach unserer Pruefung. Zwischen "geprueft" und "verwendet"
-         * liegt dann ein Zeitfenster, in dem sich die Antwort aendern kann. Ein
-         * Angreifer mit sehr kurzer DNS-Lebensdauer antwortet unserer Pruefung
-         * mit einer oeffentlichen Adresse und dem Verbindungsaufbau eine
-         * Millisekunde spaeter mit 127.0.0.1 (DNS Rebinding).
+         * Ohne dieses "lookup" würde der HTTP-Client den Namen ein zweites Mal
+         * auflösen - nach unserer Prüfung. Zwischen "geprüft" und "verwendet"
+         * liegt dann ein Zeitfenster, in dem sich die Antwort ändern kann. Ein
+         * Angreifer mit sehr kurzer DNS-Lebensdaür antwortet unserer Prüfung
+         * mit einer öffentlichen Adresse und dem Verbindungsaufbau eine
+         * Millisekunde später mit 127.0.0.1 (DNS Rebinding).
          *
-         * Hier wird stattdessen genau die Adresse verwendet, die geprueft
-         * wurde. Es gibt keine zweite Aufloesung, also auch kein Zeitfenster.
+         * Hier wird stattdessen genau die Adresse verwendet, die geprüft
+         * wurde. Es gibt keine zweite Auflösung, also auch kein Zeitfenster.
          *
-         * Der Hostname bleibt in der URL stehen: TLS-Zertifikatspruefung und
+         * Der Hostname bleibt in der URL stehen: TLS-Zertifikatsprüfung und
          * Host-Header beziehen sich weiter auf den Namen, nicht auf die IP.
          */
         lookup: ((
@@ -173,11 +173,11 @@ function requestOnce(url: URL, pinned: LookupAddress, deadline: number): Promise
           received += chunk.length;
           if (received > limits.fetchUrl.maxResponseBytes) {
             // Abbrechen, statt weiter in den Speicher zu lesen. Ein Server, der
-            // endlos sendet, wuerde den Prozess sonst umbringen.
+            // endlos sendet, würde den Prozess sonst umbringen.
             response.destroy();
             request.destroy();
             const mb = Math.round(limits.fetchUrl.maxResponseBytes / 1024 / 1024);
-            reject(unprocessable(`Die Seite ist groesser als ${mb} MB.`, 'response_too_large'));
+            reject(unprocessable(`Die Seite ist größer als ${mb} MB.`, 'response_too_large'));
             return;
           }
           chunks.push(chunk);
@@ -196,11 +196,11 @@ function requestOnce(url: URL, pinned: LookupAddress, deadline: number): Promise
 
     request.on('timeout', () => {
       request.destroy();
-      reject(unprocessable('Zeitlimit ueberschritten.', 'url_timeout'));
+      reject(unprocessable('Zeitlimit überschritten.', 'url_timeout'));
     });
 
     request.on('error', () => {
-      // Wurde die Anfrage oben schon wegen Groesse oder Zeitlimit abgewiesen,
+      // Wurde die Anfrage oben schon wegen Größe oder Zeitlimit abgewiesen,
       // meldet das erzwungene destroy() hier ein zweites Mal. Die erste
       // Ablehnung gewinnt - weitere reject-Aufrufe sind wirkungslos.
       reject(unprocessable('Die Seite war nicht erreichbar.', 'url_failed'));

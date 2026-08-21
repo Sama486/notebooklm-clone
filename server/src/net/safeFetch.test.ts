@@ -4,12 +4,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { fetchExternalUrl } from './safeFetch.js';
 
 /**
- * Die vier Faelle, die zaehlen, gegen einen echten lokalen HTTP-Server:
- * IP-Literal im privaten Bereich, Hostname der intern aufloest, Weiterleitung
+ * Die vier Fälle, die zählen, gegen einen echten lokalen HTTP-Server:
+ * IP-Literal im privaten Bereich, Hostname der intern auflöst, Weiterleitung
  * nach intern, und file://.
  *
  * Ein echter Server statt eines Mocks, weil der interessante Teil der Abwehr
- * genau im Zusammenspiel von DNS-Aufloesung, Verbindungsaufbau und
+ * genau im Zusammenspiel von DNS-Auflösung, Verbindungsaufbau und
  * Weiterleitungsbehandlung liegt - also in dem, was ein Mock wegabstrahiert.
  */
 describe('SSRF-Abwehr beim Abruf externer URLs', () => {
@@ -19,8 +19,8 @@ describe('SSRF-Abwehr beim Abruf externer URLs', () => {
   beforeAll(async () => {
     server = http.createServer((req, res) => {
       if (req.url === '/redirect-to-internal') {
-        // Sieht harmlos aus, zeigt aber nach innen. Ohne erneute Pruefung bei
-        // jeder Weiterleitung waere das der bequemste Weg an der Abwehr vorbei.
+        // Sieht harmlos aus, zeigt aber nach innen. Ohne erneute Prüfung bei
+        // jeder Weiterleitung wäre das der bequemste Weg an der Abwehr vorbei.
         res.writeHead(302, { Location: 'http://169.254.169.254/latest/meta-data/' });
         res.end();
         return;
@@ -65,9 +65,9 @@ describe('SSRF-Abwehr beim Abruf externer URLs', () => {
     });
   });
 
-  it('Fall 2: ein Hostname, der intern aufloest, wird abgelehnt', async () => {
+  it('Fall 2: ein Hostname, der intern auflöst, wird abgelehnt', async () => {
     // "localhost" ist ein Name, keine IP - die Sperre greift erst nach der
-    // DNS-Aufloesung. Genau deshalb wird aufgeloest und dann geprueft, statt
+    // DNS-Auflösung. Genau deshalb wird aufgelöst und dann geprüft, statt
     // die Zeichenkette der URL zu mustern.
     await expect(fetchExternalUrl(`http://localhost:${port}/`)).rejects.toMatchObject({
       code: 'blocked_address',
@@ -76,8 +76,8 @@ describe('SSRF-Abwehr beim Abruf externer URLs', () => {
 
   it('Fall 3: eine Weiterleitung nach intern wird abgelehnt', async () => {
     // Der erste Abruf geht an einen erlaubten Host und ist erfolgreich; erst
-    // das Ziel der Weiterleitung ist intern. Wer nur die Eingabe-URL prueft,
-    // laesst das durch.
+    // das Ziel der Weiterleitung ist intern. Wer nur die Eingabe-URL prüft,
+    // lässt das durch.
     await expect(
       fetchExternalUrl(`http://127.0.0.1:${port}/redirect-to-internal`),
     ).rejects.toBeTruthy();
@@ -107,7 +107,7 @@ describe('SSRF-Abwehr beim Abruf externer URLs', () => {
     await expect(fetchExternalUrl('keine-url')).rejects.toMatchObject({ code: 'invalid_url' });
   });
 
-  it('gibt in der Fehlermeldung nichts ueber das Ziel preis', async () => {
+  it('gibt in der Fehlermeldung nichts über das Ziel preis', async () => {
     // Die Meldung geht an den Client. Sie darf nicht verraten, ob ein interner
     // Host existiert, antwortet oder welchen Fehler er liefert.
     const error = await fetchExternalUrl('http://192.168.13.37/admin').catch((e) => e);

@@ -3,45 +3,45 @@ import { limits } from '../config.js';
 import { AppError } from '../http/errors.js';
 
 /**
- * Begrenzt die Anmeldeversuche je Konto - mit dem Zaehler in der Datenbank.
+ * Begrenzt die Anmeldeversuche je Konto - mit dem Zähler in der Datenbank.
  *
- * WARUM NICHT DER ZAEHLER IM PROZESSSPEICHER (wie bei den uebrigen Limits):
+ * WARUM NICHT DER ZAEHLER IM PROZESSSPEICHER (wie bei den übrigen Limits):
  *
  * Die Annahme "eine Instanz" wurde gegen die laufende Installation gemessen und
  * ist dort bereits falsch. Aufeinanderfolgende Anmeldeversuche bekamen
- * Antworten mit unterschiedlichen Fensterenden zurueck (reset=900, 818, 814,
- * 860 ...) - also mehrere voneinander unabhaengige Zaehler. Ein Angreifer, der
- * Passwoerter durchprobiert, bekommt damit ein Vielfaches der zehn erlaubten
- * Versuche, ohne irgendetwas dafuer tun zu muessen.
+ * Antworten mit unterschiedlichen Fensterenden zurück (reset=900, 818, 814,
+ * 860 ...) - also mehrere voneinander unabhängige Zähler. Ein Angreifer, der
+ * Passwörter durchprobiert, bekommt damit ein Vielfaches der zehn erlaubten
+ * Versuche, ohne irgendetwas dafür tun zu müssen.
  *
- * Bei einem Kostenlimit waere das hinnehmbar. Beim Schutz gegen das
- * Durchprobieren von Passwoertern ist es das nicht: eine Schutzmassnahme, die
- * nicht wirkt, ist schlimmer als keine, weil sie Sicherheit vortaeuscht.
+ * Bei einem Kostenlimit wäre das hinnehmbar. Beim Schutz gegen das
+ * Durchprobieren von Passwörtern ist es das nicht: eine Schutzmaßnahme, die
+ * nicht wirkt, ist schlimmer als keine, weil sie Sicherheit vortäuscht.
  *
  * WARUM DER SCHLUESSEL DIE E-MAIL IST UND NICHT DIE IP:
  *
- * Hinter Renders Proxy ist die Absender-IP nicht verlaesslich (genau das hat
- * die Messung oben gezeigt). Die E-Mail ist dagegen genau das, was geschuetzt
+ * Hinter Renders Proxy ist die Absender-IP nicht verlässlich (genau das hat
+ * die Messung oben gezeigt). Die E-Mail ist dagegen genau das, was geschützt
  * werden soll: das einzelne Konto. Ein Angreifer mit wechselnden IPs bekommt
  * trotzdem nur zehn Versuche gegen dieses Konto.
  *
  * Der Preis, offen benannt: wer viele verschiedene Konten mit je wenigen
- * Passwoertern durchprobiert (Password Spraying), wird hiervon nicht gebremst.
- * Dagegen hilft eine verlaessliche Absenderkennung - siehe README,
- * "Was als Naechstes kaeme".
+ * Passwörtern durchprobiert (Password Spraying), wird hiervon nicht gebremst.
+ * Dagegen hilft eine verlässliche Absenderkennung - siehe README,
+ * "Was als Nächstes käme".
  */
 
-/** Zaehlt einen Versuch und wirft 429, wenn das Fenster voll ist. */
+/** Zählt einen Versuch und wirft 429, wenn das Fenster voll ist. */
 export async function registerLoginAttempt(email: string): Promise<void> {
   const { windowMs, max } = limits.rateLimit.auth;
   const key = `login:${email}`;
   const expiresAt = new Date(Date.now() + windowMs);
 
-  // Eine einzige Anweisung, damit Zaehlen und Pruefen nicht auseinanderfallen.
-  // Mit getrenntem Lesen und Schreiben koennten zwei gleichzeitige Versuche
-  // beide denselben alten Wert lesen und das Limit gemeinsam ueberschreiten.
+  // Eine einzige Anweisung, damit Zählen und Prüfen nicht auseinanderfallen.
+  // Mit getrenntem Lesen und Schreiben könnten zwei gleichzeitige Versuche
+  // beide denselben alten Wert lesen und das Limit gemeinsam überschreiten.
   //
-  // Ist das Fenster abgelaufen, beginnt der Zaehler wieder bei 1 - deshalb die
+  // Ist das Fenster abgelaufen, beginnt der Zähler wieder bei 1 - deshalb die
   // Fallunterscheidung direkt in der Anweisung statt einer vorherigen Abfrage.
   const rows = await prisma.$queryRaw<{ count: number; expiresAt: Date }[]>`
     INSERT INTO "LoginAttempt" ("key", "count", "expiresAt")
@@ -70,20 +70,20 @@ export async function registerLoginAttempt(email: string): Promise<void> {
 }
 
 /**
- * Loescht den Zaehler nach erfolgreicher Anmeldung.
+ * Löscht den Zähler nach erfolgreicher Anmeldung.
  *
- * Ohne das wuerde jemand, der sich zehnmal am Tag vertippt und dann richtig
- * anmeldet, beim naechsten Vertippen ausgesperrt.
+ * Ohne das würde jemand, der sich zehnmal am Tag vertippt und dann richtig
+ * anmeldet, beim nächsten Vertippen ausgesperrt.
  */
 export async function clearLoginAttempts(email: string): Promise<void> {
   await prisma.loginAttempt.deleteMany({ where: { key: `login:${email}` } });
 }
 
 /**
- * Raeumt abgelaufene Fenster weg.
+ * Räumt abgelaufene Fenster weg.
  *
- * Ohne Aufraeumen waechst die Tabelle mit jeder je verwendeten E-Mail-Adresse.
- * Laeuft gelegentlich statt regelmaessig - ein Zeitgeber im Prozess waere
+ * Ohne Aufräumen wächst die Tabelle mit jeder je verwendeten E-Mail-Adresse.
+ * Läuft gelegentlich statt regelmässig - ein Zeitgeber im Prozess wäre
  * wieder Zustand, der bei mehreren Instanzen mehrfach liefe.
  */
 export async function cleanupExpiredAttempts(): Promise<number> {

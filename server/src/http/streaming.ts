@@ -6,10 +6,10 @@ import type { Response } from 'express';
  * - `text/event-stream` schaltet Zwischenschichten (und den Browser) in den
  *   Stream-Modus statt auf "Antwort sammeln, dann ausliefern".
  * - `no-transform` und `Content-Encoding: identity` verhindern, dass ein Proxy
- *   die Antwort komprimiert - ein Kompressor puffert naturgemaess, weil er
- *   Bloecke braucht.
+ *   die Antwort komprimiert - ein Kompressor puffert naturgemäss, weil er
+ *   Blöcke braucht.
  * - `X-Accel-Buffering: no` schaltet die Pufferung in nginx ab. Render setzt
- *   nginx davor; ohne diesen Header kommt die Antwort am Stueck.
+ *   nginx davor; ohne diesen Header kommt die Antwort am Stück.
  * - `flushHeaders()` schickt die Kopfzeilen sofort raus, statt auf das erste
  *   Datenpaket zu warten.
  */

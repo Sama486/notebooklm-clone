@@ -32,18 +32,18 @@ export function App() {
 }
 
 /**
- * Schuetzt eine Route.
+ * Schützt eine Route.
  *
- * Das ist Bequemlichkeit, keine Sicherheit: die eigentliche Pruefung macht der
- * Server bei jeder Anfrage. Ohne diese Huelle saehe ein abgemeldeter Nutzer
- * das Grundgeruest der Seite und danach lauter Fehlermeldungen.
+ * Das ist Bequemlichkeit, keine Sicherheit: die eigentliche Prüfung macht der
+ * Server bei jeder Anfrage. Ohne diese Hülle sähe ein abgemeldeter Nutzer
+ * das Grundgerüst der Seite und danach lauter Fehlermeldungen.
  */
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  // Solange der gespeicherte Token noch geprueft wird, ist nicht entschieden,
-  // ob jemand angemeldet ist. Hier schon weiterzuleiten wuerde bei jedem
+  // Solange der gespeicherte Token noch geprüft wird, ist nicht entschieden,
+  // ob jemand angemeldet ist. Hier schon weiterzuleiten würde bei jedem
   // Neuladen kurz die Anmeldeseite aufblitzen lassen.
   if (loading) {
     return (

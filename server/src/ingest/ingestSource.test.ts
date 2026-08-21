@@ -10,7 +10,7 @@ import { embeddingKey, embedWithCache } from './embeddingCache.js';
 /**
  * Fehlerpfade beim Einlesen.
  *
- * Der Vorgang laeuft im Hintergrund - ein Fehler kann also nirgends als
+ * Der Vorgang läuft im Hintergrund - ein Fehler kann also nirgends als
  * HTTP-Status landen. Er muss als Status an der Quelle sichtbar werden, sonst
  * sitzt der Nutzer vor einem Ladebalken, der nie fertig wird.
  */
@@ -72,8 +72,8 @@ describe('Einlesen: Fehlerpfade und Wiederholbarkeit', () => {
   });
 
   it('setzt bei einem Fehler des KI-Dienstes failed - mit neutraler Meldung', async () => {
-    // Bewusst einzigartiger Text: waere er schon im Cache, kaeme der Dienst
-    // gar nicht an die Reihe und der Fehler traete nie ein.
+    // Bewusst einzigartiger Text: wäre er schon im Cache, käme der Dienst
+    // gar nicht an die Reihe und der Fehler träte nie ein.
     const source = await createSource(`Einmaliger Text ${Date.now()}. `.repeat(60));
 
     const brokenAi = createTestAiClient();
@@ -86,18 +86,18 @@ describe('Einlesen: Fehlerpfade und Wiederholbarkeit', () => {
     const after = await prisma.source.findUniqueOrThrow({ where: { id: source.id } });
     expect(after.status).toBe('failed');
     // Kein Durchreichen des Anbieterfehlers - die Meldung landet in der
-    // Oberflaeche und darf nichts Internes verraten.
+    // Oberfläche und darf nichts Internes verraten.
     expect(after.error).not.toContain('503');
     expect(after.error).toContain('erneut versuchen');
     // Und es liegen keine halben Abschnitte herum.
     expect(await prisma.chunk.count({ where: { sourceId: source.id } })).toBe(0);
   });
 
-  it('wirft nicht, wenn die Quelle inzwischen geloescht wurde', async () => {
+  it('wirft nicht, wenn die Quelle inzwischen gelöscht wurde', async () => {
     const source = await createSource('Inhalt. '.repeat(60));
     await prisma.source.delete({ where: { id: source.id } });
 
-    // Der Nutzer hat geloescht, waehrend der Vorgang in der Warteschlange
+    // Der Nutzer hat gelöscht, während der Vorgang in der Warteschlange
     // stand. Das ist kein Fehler, sondern nichts mehr zu tun - und es darf auch
     // keinen Fehler ins Log schreiben.
     const errors: unknown[][] = [];
@@ -121,7 +121,7 @@ describe('Einlesen: Fehlerpfade und Wiederholbarkeit', () => {
     const second = await prisma.chunk.count({ where: { sourceId: source.id } });
 
     expect(second).toBe(first);
-    // Auch die Nummerierung bleibt luecken- und doppelfrei.
+    // Auch die Nummerierung bleibt lücken- und doppelfrei.
     const chunks = await prisma.chunk.findMany({
       where: { sourceId: source.id },
       orderBy: { index: 'asc' },
@@ -165,7 +165,7 @@ describe('Embedding-Cache', () => {
     const texts = ['Erster Text', 'Zweiter Text', 'Erster Text'];
     const first = await embedWithCache(ai, texts);
     expect(calls).toBe(1);
-    // Trotz Dublette in der Eingabe kommen drei Vektoren zurueck, in der
+    // Trotz Dublette in der Eingabe kommen drei Vektoren zurück, in der
     // Reihenfolge der Eingabe.
     expect(first).toHaveLength(3);
     expect(first[0]).toEqual(first[2]);
@@ -176,7 +176,7 @@ describe('Embedding-Cache', () => {
 
     // Nicht bitgenau vergleichen: der Weg durch die Datenbank kostet die
     // letzte Stelle der Gleitkommazahl (siehe Kommentar in embeddingCache.ts).
-    // Fuer die Rangfolge ist das ohne Bedeutung, fuer toEqual waere es ein
+    // Für die Rangfolge ist das ohne Bedeutung, für toEqual wäre es ein
     // Unterschied.
     expect(second).toHaveLength(first.length);
     second.forEach((vector, index) => {
@@ -186,14 +186,14 @@ describe('Embedding-Cache', () => {
     });
   });
 
-  it('nimmt den Modellnamen in den Schluessel auf', () => {
+  it('nimmt den Modellnamen in den Schlüssel auf', () => {
     // Vektoren aus zwei Modellen sind nicht vergleichbar - derselbe Text darf
     // deshalb nicht denselben Cache-Eintrag treffen.
     expect(embeddingKey('modell-a', 'Text')).not.toBe(embeddingKey('modell-b', 'Text'));
     expect(embeddingKey('modell-a', 'Text')).toBe(embeddingKey('modell-a', 'Text'));
   });
 
-  it('gibt bei leerer Eingabe nichts zurueck', async () => {
+  it('gibt bei leerer Eingabe nichts zurück', async () => {
     expect(await embedWithCache(createTestAiClient(), [])).toEqual([]);
   });
 });

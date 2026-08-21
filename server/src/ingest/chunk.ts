@@ -1,15 +1,15 @@
 import { limits } from '../config.js';
 
 /**
- * Zerlegt einen Volltext in ueberlappende Abschnitte und fuehrt dabei die
+ * Zerlegt einen Volltext in überlappende Abschnitte und führt dabei die
  * Zeichen-Positionen im Ursprungstext mit.
  *
  * `charStart` und `charEnd` sind der Grund, warum diese Funktion so aussieht,
- * wie sie aussieht. Ohne sie kann die Oberflaeche nicht zur zitierten Stelle
+ * wie sie aussieht. Ohne sie kann die Oberfläche nicht zur zitierten Stelle
  * springen - und die Zitatfunktion ist das Kernfeature. Deshalb wird der Text
- * nie umgeschrieben, nie normalisiert und nie getrimmt: jeder zurueckgegebene
- * Abschnitt erfuellt `text.slice(charStart, charEnd) === content`. Genau das
- * prueft der Test.
+ * nie umgeschrieben, nie normalisiert und nie getrimmt: jeder zurückgegebene
+ * Abschnitt erfüllt `text.slice(charStart, charEnd) === content`. Genau das
+ * prüft der Test.
  *
  * Reine Funktion, kein Netz, keine Datenbank - deshalb billig zu testen.
  */
@@ -24,14 +24,14 @@ export interface Chunk {
 }
 
 /**
- * Grobe Umrechnung Token -> Zeichen fuer deutschen Text.
+ * Grobe Umrechnung Token -> Zeichen für deutschen Text.
  *
- * Deutsche Texte liegen mit Gemini-artigen Tokenizern bei ungefaehr 3,5 Zeichen
- * je Token - Komposita wie "Berechtigungspruefung" werden in mehrere Stuecke
- * zerlegt. Der Wert muss nicht exakt sein: er steuert die Abschnittsgroesse,
- * und die darf um zwanzig Prozent danebenliegen, ohne dass die Trefferqualitaet
- * leidet. Ein echter Tokenizer waere ein Netzaufruf je Abschnitt - dieser Preis
- * steht in keinem Verhaeltnis.
+ * Deutsche Texte liegen mit Gemini-artigen Tokenizern bei ungefähr 3,5 Zeichen
+ * je Token - Komposita wie "Berechtigungsprüfung" werden in mehrere Stücke
+ * zerlegt. Der Wert muss nicht exakt sein: er steürt die Abschnittsgrösse,
+ * und die darf um zwanzig Prozent danebenliegen, ohne dass die Trefferqualität
+ * leidet. Ein echter Tokenizer wäre ein Netzaufruf je Abschnitt - dieser Preis
+ * steht in keinem Verhältnis.
  */
 const CHARS_PER_TOKEN = 3.5;
 
@@ -44,8 +44,8 @@ const overlapChars = Math.round(limits.chunking.overlapTokens * CHARS_PER_TOKEN)
 const minChars = Math.round(limits.chunking.minTokens * CHARS_PER_TOKEN);
 
 /**
- * Seitenumbrueche aus der PDF-Extraktion: `pageBreaks[i]` ist die
- * Zeichen-Position, an der Seite `i + 2` beginnt. Fuer Text- und URL-Quellen
+ * Seitenumbrüche aus der PDF-Extraktion: `pageBreaks[i]` ist die
+ * Zeichen-Position, an der Seite `i + 2` beginnt. Für Text- und URL-Quellen
  * bleibt die Liste leer und `page` damit `undefined`.
  */
 export function chunkText(text: string, pageBreaks: number[] = []): Chunk[] {
@@ -58,7 +58,7 @@ export function chunkText(text: string, pageBreaks: number[] = []): Chunk[] {
   while (cursor < text.length) {
     const hardEnd = Math.min(cursor + targetChars, text.length);
     // Bevorzugt an einer Absatzgrenze schneiden. Ein Abschnitt, der mitten im
-    // Satz aufhoert, verliert genau den Zusammenhang, den das Embedding
+    // Satz aufhört, verliert genau den Zusammenhang, den das Embedding
     // abbilden soll.
     const end = hardEnd >= text.length ? text.length : bestBoundary(boundaries, cursor, hardEnd);
 
@@ -76,8 +76,8 @@ export function chunkText(text: string, pageBreaks: number[] = []): Chunk[] {
 
     if (end >= text.length) break;
 
-    // Ueberlappung: der naechste Abschnitt beginnt ein Stueck vor dem Ende des
-    // vorigen. Ohne sie faellt eine Aussage, die genau ueber der Schnittkante
+    // Überlappung: der nächste Abschnitt beginnt ein Stück vor dem Ende des
+    // vorigen. Ohne sie fällt eine Aussage, die genau über der Schnittkante
     // liegt, bei der Suche durch beide Raster.
     const next = Math.max(end - overlapChars, cursor + 1);
     cursor = next;
@@ -93,7 +93,7 @@ function paragraphBoundaries(text: string): number[] {
   for (const match of text.matchAll(/\n[ \t]*\n/g)) {
     positions.add(match.index + match[0].length);
   }
-  // Satzenden als zweite Wahl, wenn ein Absatz laenger ist als ein Abschnitt.
+  // Satzenden als zweite Wahl, wenn ein Absatz länger ist als ein Abschnitt.
   for (const match of text.matchAll(/[.!?:]["')\]]?\s+/g)) {
     positions.add(match.index + match[0].length);
   }
@@ -101,15 +101,15 @@ function paragraphBoundaries(text: string): number[] {
 }
 
 /**
- * Groesste Grenze, die noch vor `hardEnd` liegt und nicht zu dicht hinter
- * `start` - sonst entstuenden Splitter statt Abschnitte. Findet sich keine,
+ * Größte Grenze, die noch vor `hardEnd` liegt und nicht zu dicht hinter
+ * `start` - sonst entstünden Splitter statt Abschnitte. Findet sich keine,
  * wird hart bei `hardEnd` geschnitten.
  */
 function bestBoundary(boundaries: number[], start: number, hardEnd: number): number {
   const earliest = start + Math.round(targetChars * 0.5);
   let best = -1;
 
-  // Aufsteigend sortiert: die letzte passende Grenze ist die groesste.
+  // Aufsteigend sortiert: die letzte passende Grenze ist die größte.
   for (const position of boundaries) {
     if (position > hardEnd) break;
     if (position >= earliest) best = position;
@@ -129,11 +129,11 @@ function pageAt(charPosition: number, pageBreaks: number[]): number | undefined 
 }
 
 /**
- * Haengt einen zu kurzen letzten Abschnitt an seinen Vorgaenger.
+ * Hängt einen zu kurzen letzten Abschnitt an seinen Vorgänger.
  *
  * Ein Rest von zwanzig Zeichen bekommt sonst ein eigenes Embedding und
  * konkurriert bei der Suche mit vollwertigen Abschnitten - bei sehr kurzem Text
- * ist die Kosinus-Aehnlichkeit zufaellig hoch.
+ * ist die Kosinus-Ähnlichkeit zufällig hoch.
  */
 function mergeTinyTail(chunks: Chunk[], text: string): Chunk[] {
   if (chunks.length < 2) return chunks;

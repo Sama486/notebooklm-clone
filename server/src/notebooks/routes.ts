@@ -22,11 +22,11 @@ const idParams = uuidParam('notebookId');
  * Liste der eigenen Notebooks, cursor-paginiert.
  *
  * Kein `findMany` ohne `take`: eine unbegrenzte Liste wird genau an dem Tag zum
- * Problem, an dem ein Nutzer viele Notebooks hat - und bis dahin faellt sie
+ * Problem, an dem ein Nutzer viele Notebooks hat - und bis dahin fällt sie
  * niemandem auf. Cursor statt Offset, weil `OFFSET n` die Datenbank zwingt, n
  * Zeilen zu lesen und wegzuwerfen.
  *
- * `_count` statt einer zweiten Abfrage je Notebook - sonst waere die Liste eine
+ * `_count` statt einer zweiten Abfrage je Notebook - sonst wäre die Liste eine
  * N+1-Abfrage.
  */
 notebooksRouter.get(
@@ -85,13 +85,13 @@ notebooksRouter.get(
     const { notebookId } = parseParams(idParams, req);
     const notebook = await requireNotebook(notebookId, currentUserId(req));
 
-    // Quellen ueber `notebookId` - nicht ueber eigene IDs. Siehe notebookAccess.ts.
+    // Quellen über `notebookId` - nicht über eigene IDs. Siehe notebookAccess.ts.
     const sources = await prisma.source.findMany({
       where: { notebookId: notebook.id },
       orderBy: { createdAt: 'asc' },
       take: limits.source.maxPerNotebook,
-      // `content` und `fileData` bleiben draussen: die Liste wuerde sonst
-      // mehrere Megabyte gross, obwohl die Oberflaeche nur Titel und Status zeigt.
+      // `content` und `fileData` bleiben draussen: die Liste würde sonst
+      // mehrere Megabyte groß, obwohl die Oberfläche nur Titel und Status zeigt.
       select: {
         id: true,
         title: true,
@@ -140,8 +140,8 @@ notebooksRouter.delete(
   asyncHandler(async (req, res) => {
     const { notebookId } = parseParams(idParams, req);
     await requireNotebook(notebookId, currentUserId(req));
-    // Quellen, Abschnitte und Nachrichten haengen per onDelete: Cascade dran -
-    // die Datenbank raeumt auf, nicht der Anwendungscode.
+    // Quellen, Abschnitte und Nachrichten hängen per onDelete: Cascade dran -
+    // die Datenbank räumt auf, nicht der Anwendungscode.
     await prisma.notebook.delete({ where: { id: notebookId } });
     res.status(204).end();
   }),
