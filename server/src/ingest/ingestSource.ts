@@ -66,7 +66,7 @@ export async function ingestSource(sourceId: string, ai: AiClient): Promise<void
      * braucht. Bei einem langsamen Anbieter sind das Sekunden je Stapel; bei
      * mehreren gleichzeitigen Einlesevorgängen ist der Verbindungspool leer,
      * und die Anwendung steht - obwohl die Datenbank nichts zu tun hat. Das
-     * sieht man erst unter Last, und dann ist es teür.
+     * sieht man erst unter Last, und dann ist es teuer.
      */
     const embeddings = await embedWithCache(
       ai,
@@ -74,7 +74,7 @@ export async function ingestSource(sourceId: string, ai: AiClient): Promise<void
     );
 
     // Die Transaktion umfasst nur noch das Schreiben: alte Abschnitte weg,
-    // neü rein, Status setzen. Entweder alles davon oder nichts - sonst
+    // neue rein, Status setzen. Entweder alles davon oder nichts - sonst
     // gäbe es einen Zustand mit halb gelöschten Abschnitten und Status
     // "ready".
     await prisma.$transaction(async (tx) => {
@@ -138,7 +138,7 @@ export async function ingestSource(sourceId: string, ai: AiClient): Promise<void
  * BENANNTE ANNAHME: geht der Prozess mitten im Einlesen unter, bleibt die
  * Quelle auf "processing" stehen. Der Zustand ist nicht verloren (er steht in
  * der Datenbank), aber niemand nimmt die Arbeit automatisch wieder auf - der
- * Nutzer stösst sie über "Erneut versuchen" neu an. Ein Aufräumlauf, der
+ * Nutzer stößt sie über "Erneut versuchen" neu an. Ein Aufräumlauf, der
  * lange hängende Vorgänge zurüksetzt, wäre der nächste Schritt; er steht
  * im README unter "Was als Nächstes käme".
  */

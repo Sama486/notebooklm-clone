@@ -87,7 +87,7 @@ function normalizeWhitespace(text: string): string {
     .trim();
 }
 
-/** Aus einer URL einen brauchbaren Anzeigetitel baün, wenn die Seite keinen hat. */
+/** Aus einer URL einen brauchbaren Anzeigetitel bauen, wenn die Seite keinen hat. */
 export function titleFromUrl(rawUrl: string): string {
   try {
     const url = new URL(rawUrl);

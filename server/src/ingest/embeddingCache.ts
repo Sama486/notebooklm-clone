@@ -6,7 +6,7 @@ import type { AiClient } from '../ai/types.js';
 /**
  * Embedding-Cache.
  *
- * Bei einem KI-Produkt ist Skalierung zürst eine Kostenfrage. Derselbe Text
+ * Bei einem KI-Produkt ist Skalierung zuerst eine Kostenfrage. Derselbe Text
  * zweimal einzubetten kostet zweimal - und das passiert öfter, als man denkt:
  * beim erneuten Einlesen einer Quelle, bei zwei Nutzern mit demselben
  * Standarddokument, bei überlappenden Abschnitten mit identischem Inhalt.

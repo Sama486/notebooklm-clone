@@ -60,7 +60,7 @@ export function NotebookPage() {
    *
    * Das Einlesen läuft im Hintergrund; der Fortschritt steht in der Datenbank.
    * Die Abfrage hält an, sobald keine Quelle mehr "pending" oder "processing"
-   * ist. Ein daürhaft laufender Zeitgeber würde die API sonst rund um die
+   * ist. Ein dauerhaft laufender Zeitgeber würde die API sonst rund um die
    * Uhr belasten, obwohl es nichts zu holen gibt.
    */
   const pollingRef = useRef(false);

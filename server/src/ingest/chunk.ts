@@ -28,7 +28,7 @@ export interface Chunk {
  *
  * Deutsche Texte liegen mit Gemini-artigen Tokenizern bei ungefähr 3,5 Zeichen
  * je Token - Komposita wie "Berechtigungsprüfung" werden in mehrere Stücke
- * zerlegt. Der Wert muss nicht exakt sein: er steürt die Abschnittsgrösse,
+ * zerlegt. Der Wert muss nicht exakt sein: er steuert die Abschnittsgrösse,
  * und die darf um zwanzig Prozent danebenliegen, ohne dass die Trefferqualität
  * leidet. Ein echter Tokenizer wäre ein Netzaufruf je Abschnitt - dieser Preis
  * steht in keinem Verhältnis.

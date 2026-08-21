@@ -303,7 +303,7 @@ sourcesRouter.post(
       throw conflict('Diese Quelle wird gerade verarbeitet.', 'already_processing');
     }
 
-    // Wiederholbar: ingestSource löscht die alten Abschnitte, bevor es neü
+    // Wiederholbar: ingestSource löscht die alten Abschnitte, bevor es neue
     // schreibt. Zweimal ausgeführt entstehen keine Dubletten.
     await prisma.source.update({
       where: { id: source.id },

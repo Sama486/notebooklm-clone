@@ -3,7 +3,7 @@
  *
  * Erzeugt statt mitgeliefert: eine Binärdatei im Repo könnte niemand lesen
  * oder prüfen, und der Test soll nachvollziehbar bleiben. Außerdem lässt
- * sich so gezielt ein PDF baün, das einen Injektionsversuch enthält.
+ * sich so gezielt ein PDF bauen, das einen Injektionsversuch enthält.
  *
  * Eine Seite fasst etwa 45 umbrochene Zeilen zu 90 Zeichen, also rund 4.000
  * Zeichen. Mehr läuft unten aus der Seite heraus und fehlt anschliessend im

@@ -55,7 +55,7 @@ chatRouter.get(
       take,
     });
 
-    // Absteigend geholt (die neüsten), aufsteigend ausgeliefert (Lesereihenfolge).
+    // Absteigend geholt (die neuesten), aufsteigend ausgeliefert (Lesereihenfolge).
     res.json({ messages: messages.reverse() });
   }),
 );
@@ -130,7 +130,7 @@ chatRouter.post(
       snippet: chunk.content.slice(0, limits.chat.snippetChars),
     }));
 
-    // 3. Prompt baün. Die Injection-Abgrenzung steckt in prompt.ts.
+    // 3. Prompt bauen. Die Injection-Abgrenzung steckt in prompt.ts.
     const history = await recentHistory(notebook.id);
     const messages: ChatMessage[] = [
       ...history,
@@ -145,7 +145,7 @@ chatRouter.post(
 
     // 4. Streamen und die Marker aus dem Textstrom fischen.
     setStreamingHeaders(res);
-    // Die Belege gehen zürst raus: das Frontend kann die Chips schon
+    // Die Belege gehen zuerst raus: das Frontend kann die Chips schon
     // vorbereiten, während die Antwort noch läuft.
     sendEvent(res, 'citations', { citations });
 

@@ -6,8 +6,8 @@ import { useEffect, useRef } from 'react';
  * DIE SICHERHEITSRELEVANTE STELLE DES FRONTENDS.
  *
  * Der angezeigte Text stammt aus einer hochgeladenen Datei oder einer fremden
- * Website - also von jemandem, dem wir nicht vertraün. Der naheliegende Weg
- * wäre, um die Fundstelle ein <mark> zu baün und das Ganze per
+ * Website - also von jemandem, dem wir nicht vertrauen. Der naheliegende Weg
+ * wäre, um die Fundstelle ein <mark> zu bauen und das Ganze per
  * dangerouslySetInnerHTML einzusetzen. Das wäre eine XSS-Lücke: ein Dokument
  * mit <script> oder <img onerror=...> im Text würde bei jedem Betrachter
  * ausgeführt.

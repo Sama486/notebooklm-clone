@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { limits } from '../config.js';
 
 /**
- * Kostenfaktor 12 statt des verbreiteten Standards 10: viermal so teür je
+ * Kostenfaktor 12 statt des verbreiteten Standards 10: viermal so teuer je
  * Versuch, für den anmeldenden Nutzer weiterhin unter ~250 ms.
  */
 export function hashPassword(plain: string): Promise<string> {
@@ -16,7 +16,7 @@ export function verifyPassword(plain: string, hash: string): Promise<boolean> {
 /**
  * Vergleich gegen einen festen Hash. Wird beim Anmeldeversuch mit unbekannter
  * E-Mail ausgeführt, damit "Konto existiert nicht" und "Passwort falsch"
- * gleich lange daürn. Ohne das lässt sich über die Antwortzeit aufzählen,
+ * gleich lange dauern. Ohne das lässt sich über die Antwortzeit aufzählen,
  * welche E-Mail-Adressen registriert sind - die Fehlermeldung allein
  * gleichzuziehen reicht nicht.
  */

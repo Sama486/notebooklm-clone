@@ -36,7 +36,7 @@ function build(config: { windowMs: number; max: number }, code: string): Request
 /** Registrierung und Anmeldung - bremst das Durchprobieren von Passwörtern. */
 export const authLimiter = build(limits.rateLimit.auth, 'rate_limited_auth');
 
-/** Einlesen einer Quelle - teür, weil Extraktion und Embeddings dranhängen. */
+/** Einlesen einer Quelle - teuer, weil Extraktion und Embeddings dranhängen. */
 export const ingestLimiter = build(limits.rateLimit.ingest, 'rate_limited_ingest');
 
 /** Chat - jede Anfrage kostet einen Modellaufruf. */

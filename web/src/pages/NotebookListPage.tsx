@@ -71,7 +71,7 @@ export function NotebookListPage() {
         <input
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder="Titel des neün Notebooks"
+          placeholder="Titel des neuen Notebooks"
           maxLength={120}
           className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
         />

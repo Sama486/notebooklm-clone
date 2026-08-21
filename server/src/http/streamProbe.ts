@@ -14,7 +14,7 @@ export const streamProbeRouter = Router();
  * Kommen die Zeitstempel im Sekundenabstand, geht der Stream durch. Kommt alles
  * auf einmal, puffert etwas dazwischen - und dann wäre auch die Chat-Antwort
  * kein Stream, sondern eine lange Pause mit einem Block am Ende. Das erst am
- * Ende des Projekts zu bemerken ist der teürste Zeitpunkt dafür.
+ * Ende des Projekts zu bemerken ist der teuerste Zeitpunkt dafür.
  *
  * Es gibt keine Nutzerdaten und keine Parameter - ein Aufruf kostet nur die
  * zehn Sekunden offene Verbindung.

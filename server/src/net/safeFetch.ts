@@ -25,7 +25,7 @@ import { isBlockedAddress } from './privateAddress.js';
  * 4. Jede Weiterleitung erneut vollständig prüfen. Eine Umleitung nach innen
  *    ist der Standardtrick, weil die erste URL harmlos aussieht.
  * 5. Zeitlimit und Grössengrenze, damit ein langsamer oder endloser Server
- *    keine Verbindung und keinen Speicher daürhaft bindet.
+ *    keine Verbindung und keinen Speicher dauerhaft bindet.
  */
 
 export interface FetchedDocument {
@@ -90,7 +90,7 @@ function parseAndCheckScheme(rawUrl: string): URL {
  * Geprüft werden ALLE zurückgegebenen A- und AAAA-Adressen. Eine einzige
  * gesperrte Adresse führt zur Ablehnung des ganzen Namens: wäre nur die
  * gewählte Adresse geprüft, könnte ein Angreifer über die Reihenfolge im
- * DNS steürn, welche wir nehmen.
+ * DNS steuern, welche wir nehmen.
  */
 async function resolveToSafeAddress(hostname: string): Promise<LookupAddress> {
   let addresses: LookupAddress[];
@@ -147,7 +147,7 @@ function requestOnce(url: URL, pinned: LookupAddress, deadline: number): Promise
          * Ohne dieses "lookup" würde der HTTP-Client den Namen ein zweites Mal
          * auflösen - nach unserer Prüfung. Zwischen "geprüft" und "verwendet"
          * liegt dann ein Zeitfenster, in dem sich die Antwort ändern kann. Ein
-         * Angreifer mit sehr kurzer DNS-Lebensdaür antwortet unserer Prüfung
+         * Angreifer mit sehr kurzer DNS-Lebensdauer antwortet unserer Prüfung
          * mit einer öffentlichen Adresse und dem Verbindungsaufbau eine
          * Millisekunde später mit 127.0.0.1 (DNS Rebinding).
          *

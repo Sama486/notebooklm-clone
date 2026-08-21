@@ -51,7 +51,7 @@ export function numberPassages(chunks: PromptChunk[]): NumberedPassage[] {
  * Reine Funktion, deshalb einzeln testbar. Sie ersetzt keine Abgrenzung im
  * Prompt, sondern ergänzt sie: die Abgrenzung sagt dem Modell, was es tun
  * soll, und diese Funktion sorgt dafür, dass das Dokument die Abgrenzung nicht
- * selbst nachbaün kann.
+ * selbst nachbauen kann.
  */
 export function neutralizeDocumentText(text: string): string {
   return (
@@ -62,7 +62,7 @@ export function neutralizeDocumentText(text: string): string {
       .replace(/<<<|>>>/g, '')
       // Zitat-Marker aus dem Dokument: sonst fälscht ein Dokument Belege.
       .replace(/\[(\d{1,3})\]/g, '($1)')
-      // Rollenwechsel-Zeilen, mit denen sich Chat-Formate nachbaün lassen.
+      // Rollenwechsel-Zeilen, mit denen sich Chat-Formate nachbauen lassen.
       .replace(/^\s*(system|assistant|user|model)\s*:/gim, '$1 -')
   );
 }

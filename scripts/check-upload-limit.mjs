@@ -9,7 +9,7 @@
  *   node scripts/check-upload-limit.mjs https://notebooklm-clone-api.onrender.com
  *
  * Legt dafür ein Wegwerf-Konto an und lädt PDFs wachsender Größe hoch.
- * Erwartet wird, dass die eigene Grenze aus server/src/config.ts zürst greift
+ * Erwartet wird, dass die eigene Grenze aus server/src/config.ts zuerst greift
  * (HTTP 413) - und nicht der Proxy mit einem Verbindungsabbruch, den niemand
  * dem Nutzer erklären kann.
  */
@@ -63,7 +63,7 @@ async function main() {
   const { notebook } = await notebookResponse.json();
 
   console.log(`Ziel: ${base}`);
-  console.log('Größe   Status  Daür     Antwort');
+  console.log('Größe   Status  Dauer     Antwort');
   console.log('-'.repeat(64));
 
   for (const megabytes of [1, 5, 10, 14, 15, 16, 20, 30]) {
