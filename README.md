@@ -422,8 +422,8 @@ Behauptung.
 
 **Der Kipppunkt: rund 1 000 Abschnitte.** Dort liegt die Suche bei etwa 1,4 Sekunden — spürbar, aber
 noch vertretbar, weil danach ohnehin der Modellaufruf folgt. Bei 10 000 Abschnitten sind 14 Sekunden
-unbrauchbar. Zur Einordnung: ein Abschnitt umfasst rund 4 000 Zeichen, also grob zwei Buchseiten —
-1 000 Abschnitte entsprechen etwa 2 000 Seiten in einem einzigen Notebook. Die Obergrenze von 50
+unbrauchbar. Zur Einordnung: ein Abschnitt umfasst rund 1 400 Zeichen, also knapp eine Buchseite —
+1 000 Abschnitte entsprechen etwa 700 Seiten in einem einzigen Notebook. Die Obergrenze von 50
 Quellen je Notebook hält den Normalfall deutlich darunter.
 
 **Das eigentliche Ergebnis der Messung ist aber die Aufteilung.** Die Rangfolge braucht bei 10 000

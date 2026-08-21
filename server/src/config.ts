@@ -60,8 +60,18 @@ export const limits = {
 
   chunking: {
     // Zielgrösse in Token; die Umrechnung Token->Zeichen steht in ingest/chunk.ts.
-    targetTokens: 1200,
-    overlapTokens: 180,
+    //
+    // 400 statt der zunächst gewählten 1200. Der Grund ist die Zitatfunktion:
+    // ein Abschnitt ist die kleinste Einheit, die hervorgehoben werden kann.
+    // Bei 1200 Token umfasst er rund vier Buchseiten - ein dreiseitiges PDF
+    // wurde zu einem einzigen Abschnitt, und die Markierung deckte praktisch
+    // das ganze Dokument ab. Ein Beleg, der auf "irgendwo in diesem Dokument"
+    // zeigt, ist kein Beleg.
+    //
+    // 400 mit 15 Prozent Überlappung entspricht dem, was sich für belegte
+    // Antworten durchgesetzt hat, und trifft in der Praxis einen Absatz.
+    targetTokens: 400,
+    overlapTokens: 60,
     minTokens: 40, // kleinere Reste werden an den Vorgänger angehängt
   },
 

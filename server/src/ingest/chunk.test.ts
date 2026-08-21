@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { limits } from '../config.js';
 import { chunkText, estimateTokens } from './chunk.js';
 
 /** Erzeugt einen Text aus nummerierten Absätzen. */
@@ -61,8 +62,10 @@ describe('Zerlegung mit Zeichen-Positionen', () => {
     for (const chunk of chunks.slice(0, -1)) {
       // Nicht exakt: geschnitten wird an Absatz- und Satzgrenzen, nicht auf
       // dem Zeichen genau. Aber keiner darf entgleisen.
-      expect(chunk.tokenCount).toBeLessThanOrEqual(1400);
-      expect(chunk.tokenCount).toBeGreaterThan(200);
+      // Nicht exakt an der Zielgrösse, aber in ihrer Nähe - geschnitten wird
+      // an Absatz- und Satzgrenzen, nicht auf dem Zeichen genau.
+      expect(chunk.tokenCount).toBeLessThanOrEqual(limits.chunking.targetTokens * 1.2);
+      expect(chunk.tokenCount).toBeGreaterThan(limits.chunking.targetTokens * 0.4);
     }
   });
 
