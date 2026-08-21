@@ -22,3 +22,6 @@ server/src/generated/
 
 # Vite-Build
 web/dist/
+
+# Bildschirmfotos aus Testlaeufen - reine Wegwerf-Artefakte
+*.png
