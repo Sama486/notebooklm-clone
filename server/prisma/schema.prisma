@@ -107,3 +107,19 @@ model EmbeddingCache {
   embedding Float[]
   createdAt DateTime @default(now())
 }
+
+// Zaehler fuer die Anmeldeversuche je Konto.
+//
+// Liegt in der Datenbank und nicht im Prozessspeicher, weil ein Zaehler im
+// Prozess bei mehreren Instanzen nichts begrenzt: jede zaehlt fuer sich, und
+// das effektive Limit vervielfacht sich. Gemessen gegen die Produktion - die
+// Antworten trugen unterschiedliche Fensterenden, also mehrere Zaehler.
+// Begruendung und Messung im README.
+model LoginAttempt {
+  key       String   @id // "login:<e-mail>"
+  count     Int      @default(0)
+  expiresAt DateTime
+
+  // Fuer das Aufraeumen abgelaufener Fenster.
+  @@index([expiresAt])
+}

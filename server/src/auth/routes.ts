@@ -8,6 +8,11 @@ import { conflict, unauthorized } from '../http/errors.js';
 import { credentialsSchema } from './schemas.js';
 import { burnTime, hashPassword, verifyPassword } from './password.js';
 import { signToken } from './tokens.js';
+import {
+  cleanupExpiredAttempts,
+  clearLoginAttempts,
+  registerLoginAttempt,
+} from './loginThrottle.js';
 import { requireAuth, currentUserId } from './middleware.js';
 
 export const authRouter = Router();
@@ -52,6 +57,17 @@ authRouter.post(
   authLimiter,
   asyncHandler(async (req, res) => {
     const { email, password } = parseBody(credentialsSchema, req);
+
+    // Zaehlt den Versuch und wirft 429, wenn zu viele auf dieses Konto
+    // entfallen. Der Zaehler liegt in der Datenbank - Begruendung und Messung
+    // in loginThrottle.ts.
+    await registerLoginAttempt(email);
+
+    // Gelegentlich abgelaufene Fenster wegraeumen. Bei etwa jedem
+    // fuenfzigsten Anmeldeversuch, damit die Tabelle nicht unbegrenzt waechst
+    // und trotzdem kein Zeitgeber im Prozess laufen muss.
+    if (Math.random() < 0.02) void cleanupExpiredAttempts().catch(() => undefined);
+
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
@@ -62,6 +78,10 @@ authRouter.post(
     if (!(await verifyPassword(password, user.passwordHash))) {
       throw unauthorized(LOGIN_FAILED, 'login_failed');
     }
+
+    // Erfolgreiche Anmeldung setzt den Zaehler zurueck - sonst waere jemand,
+    // der sich mehrfach vertippt hat, beim naechsten Mal ausgesperrt.
+    await clearLoginAttempts(email);
 
     res.json({
       token: signToken({ sub: user.id, email: user.email }),

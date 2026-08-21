@@ -36,6 +36,12 @@ export async function ingestSource(sourceId: string, ai: AiClient): Promise<void
       data: { status: 'processing', error: null },
     });
 
+    // BENANNTE AUSNAHME von der Regel "Kindobjekte nur ueber ihr Notebook":
+    // hier wird eine Quelle ueber ihre eigene ID geladen. Das ist zulaessig,
+    // weil diese Funktion kein Zugriffspfad ist - sie laeuft im Hintergrund und
+    // die ID kommt nicht von aussen, sondern von dem Endpunkt, der den Besitz
+    // bereits geprueft hat (sources/routes.ts). Es gibt keinen Weg, sie mit
+    // einer fremden ID aufzurufen.
     const source = await prisma.source.findUnique({
       where: { id: sourceId },
       select: { id: true, notebookId: true, content: true, pageBreaks: true },

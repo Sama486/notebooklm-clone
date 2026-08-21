@@ -8,6 +8,7 @@ import { prisma } from '../db.js';
  */
 export async function resetDatabase(): Promise<void> {
   await prisma.embeddingCache.deleteMany();
+  await prisma.loginAttempt.deleteMany();
   await prisma.user.deleteMany();
 }
 
