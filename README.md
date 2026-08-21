@@ -39,7 +39,11 @@ nicht als Rest.
 - **Chat ausschließlich aus den Quellen**, wortweise gestreamt.
 - **Belege.** Jede Aussage trägt eine Nummer. Ein Klick öffnet das Dokument, springt zur Stelle und
   hebt sie hervor.
-- **Quellen-Auswahl.** Jede Quelle lässt sich an- und abwählen; nur ausgewählte werden durchsucht.
+- **Quellen-Auswahl.** Jede Quelle lässt sich an- und abwählen, einzeln oder alle auf einmal; nur
+  ausgewählte werden durchsucht. Quellen lassen sich umbenennen, PDFs auch mehrere auf einmal
+  hochladen.
+- **Notizen.** Antworten lassen sich samt ihrer Belege als Notiz sichern; die Chips bleiben dort
+  anklickbar. Der Chatverlauf lässt sich als Markdown exportieren.
 
 ---
 
@@ -89,7 +93,7 @@ docker exec notebooklm-clone-postgres psql -U notebooklm -d notebooklm \
 ```bash
 cd server
 npx tsc --noEmit    # muss still bleiben
-npm test            # 162 Tests
+npm test            # 196 Tests
 npm run measure     # Messung der Ähnlichkeitssuche (Tabelle weiter unten)
 
 cd ../web
@@ -126,7 +130,7 @@ Zwei Teilprojekte, jeweils eigenständig baubar und typprüfbar:
   [`net/`](server/src/net), [`ai/`](server/src/ai). Wer die Zitatfunktion sucht, findet sie in
   `chat/`, nicht verteilt über `controllers/`, `services/` und `repositories/`.
 - **`web/`** — React, React Router, Tailwind. Drei Bereiche nebeneinander: Quellen links, Chat in
-  der Mitte, Dokument rechts.
+  der Mitte, rechts Dokument oder Notizen.
 
 **Die zwei Abläufe, auf die es ankommt:**
 
@@ -489,11 +493,12 @@ erklärbare Fehlermeldung statt eines Verbindungsabbruchs aus einer Zwischenschi
 - **Keine Leichen.** Kein auskommentierter Code, keine `TODO`s, keine `console.log`-Reste — ein
   zentrales Logging-Modul ([`logger.ts`](server/src/logger.ts)) statt verstreuter Ausgaben.
 
-### Tests: 162, dort wo die Fehler sitzen
+### Tests: 196, dort wo die Fehler sitzen
 
 | Bereich | Datei |
 |---|---|
 | Autorisierung (IDOR) | [`auth/authorization.test.ts`](server/src/auth/authorization.test.ts) |
+| Autorisierung bei Notizen, inklusive fremdem Notebook desselben Nutzers | [`notes/notes.test.ts`](server/src/notes/notes.test.ts) |
 | Anmelde-Limit, inklusive zwanzig gleichzeitiger Versuche | [`auth/loginThrottle.test.ts`](server/src/auth/loginThrottle.test.ts) |
 | SSE-Zerlegung: Zeilenenden, Paketgrenzen, Mehrbyte-Zeichen | [`ai/sse.test.ts`](server/src/ai/sse.test.ts) |
 | JWT-Angriffe (`alg: none`, fremdes Geheimnis, fremder Aussteller, abgelaufen) | [`auth/tokens.test.ts`](server/src/auth/tokens.test.ts) |
@@ -569,6 +574,26 @@ ebenfalls gemessen:
   Bei einer Antwort, die ohnehin nur aus den mitgelieferten Textstellen bestehen darf, kostet das
   Latenz und Geld ohne Gegenwert. Denkschritte werden zusätzlich aus dem Antwortstrom gefiltert
   ([`ai/sse.ts`](server/src/ai/sse.ts)) — sie sind nicht die Antwort.
+
+**Warum Abschnitte von 400 Token und nicht 1200.** Ein Abschnitt ist die kleinste Einheit, die
+hervorgehoben werden kann — die Abschnittsgröße ist damit direkt die Genauigkeit der Belege. Mit
+1200 Token umfasste ein Abschnitt rund vier Buchseiten: ein dreiseitiges PDF wurde zu einem
+einzigen Abschnitt, die Markierung deckte das ganze Dokument ab, und die Seitenangabe zeigte immer
+auf Seite 1. Gemessen an demselben PDF:
+
+| | Abschnitte | Anteil je Abschnitt | Seitenangabe |
+|---|---:|---:|---|
+| 1200 Token | 1 | 100 % | immer Seite 1 |
+| 400 Token | 5 | ~25 % | Seiten 1/2/3 korrekt |
+
+Ein Test hält die Eigenschaft fest: kein Abschnitt darf mehr als ein Viertel eines längeren
+Dokuments abdecken ([`ingest/chunk.test.ts`](server/src/ingest/chunk.test.ts)).
+
+**Warum Notizen und nicht Audio-Zusammenfassung.** Von den Funktionen, die NotebookLM sonst noch
+hat, wurde bewusst die langweiligste gebaut. Notizen brauchen keinen Modellaufruf, keine ausgehende
+Verbindung und keine neue Bibliothek — sie fügen der Anwendung **keine** neue Angriffsfläche hinzu
+und zeigen stattdessen, dass die Zugriffsregel trägt: dasselbe Muster, ein zweites Mal, mit
+eigenen IDOR-Tests.
 
 **Warum ein multilinguales Embedding-Modell.** Die Demo-Dokumente sind deutsch. Englische
 Embedding-Ranglisten übertragen sich nicht auf Deutsch: englisch-optimierte Modelle zerlegen
