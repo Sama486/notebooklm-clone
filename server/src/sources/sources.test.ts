@@ -266,6 +266,123 @@ describe('Quellen einlesen', () => {
     });
   });
 
+  describe('Umbenennen', () => {
+    it('aendert den Titel', async () => {
+      const created = await request(app)
+        .post(`/api/notebooks/${notebookId}/sources/text`)
+        .set(auth(alice))
+        .send({ title: 'Alter Titel', content: 'Inhalt. '.repeat(30) });
+
+      const res = await request(app)
+        .patch(`/api/notebooks/${notebookId}/sources/${created.body.source.id}`)
+        .set(auth(alice))
+        .send({ title: 'Neuer Titel' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.source.title).toBe('Neuer Titel');
+      // Die Auswahl bleibt unberuehrt, wenn nur der Titel geschickt wird.
+      expect(res.body.source.selected).toBe(true);
+    });
+
+    it('lehnt einen leeren Rumpf ab', async () => {
+      const created = await request(app)
+        .post(`/api/notebooks/${notebookId}/sources/text`)
+        .set(auth(alice))
+        .send({ title: 'Titel', content: 'Inhalt. '.repeat(30) });
+
+      // Ein erfolgreicher Aufruf, der nichts tut, waere schlimmer als ein
+      // Fehler: der Aufrufer merkt seinen Tippfehler nicht.
+      const res = await request(app)
+        .patch(`/api/notebooks/${notebookId}/sources/${created.body.source.id}`)
+        .set(auth(alice))
+        .send({});
+      expect(res.status).toBe(400);
+    });
+
+    it('lehnt einen leeren und einen zu langen Titel ab', async () => {
+      const created = await request(app)
+        .post(`/api/notebooks/${notebookId}/sources/text`)
+        .set(auth(alice))
+        .send({ title: 'Titel', content: 'Inhalt. '.repeat(30) });
+      const base = `/api/notebooks/${notebookId}/sources/${created.body.source.id}`;
+
+      expect((await request(app).patch(base).set(auth(alice)).send({ title: '  ' })).status).toBe(400);
+      expect(
+        (await request(app).patch(base).set(auth(alice)).send({ title: 'x'.repeat(500) })).status,
+      ).toBe(400);
+    });
+
+    it('Bob kann Alices Quelle nicht umbenennen', async () => {
+      const created = await request(app)
+        .post(`/api/notebooks/${notebookId}/sources/text`)
+        .set(auth(alice))
+        .send({ title: 'Privat', content: 'Inhalt. '.repeat(30) });
+
+      const res = await request(app)
+        .patch(`/api/notebooks/${notebookId}/sources/${created.body.source.id}`)
+        .set(auth(bob))
+        .send({ title: 'Uebernommen' });
+
+      expect(res.status).toBe(404);
+      const unveraendert = await prisma.source.findUniqueOrThrow({
+        where: { id: created.body.source.id },
+      });
+      expect(unveraendert.title).toBe('Privat');
+    });
+  });
+
+  describe('Sammelauswahl', () => {
+    async function dreiQuellen() {
+      for (const i of [1, 2, 3]) {
+        await request(app)
+          .post(`/api/notebooks/${notebookId}/sources/text`)
+          .set(auth(alice))
+          .send({ title: `Quelle ${i}`, content: `Inhalt ${i}. `.repeat(30) });
+      }
+    }
+
+    it('waehlt alle auf einmal ab und wieder an', async () => {
+      await dreiQuellen();
+      const base = `/api/notebooks/${notebookId}/sources/selection`;
+
+      const ab = await request(app).patch(base).set(auth(alice)).send({ selected: false });
+      expect(ab.status).toBe(200);
+      expect(ab.body.updated).toBe(3);
+      expect(await prisma.source.count({ where: { notebookId, selected: true } })).toBe(0);
+
+      await request(app).patch(base).set(auth(alice)).send({ selected: true });
+      expect(await prisma.source.count({ where: { notebookId, selected: false } })).toBe(0);
+    });
+
+    it('greift nur im eigenen Notebook', async () => {
+      await dreiQuellen();
+      const zweites = await createNotebook(app, alice, 'Unberuehrt');
+      await request(app)
+        .post(`/api/notebooks/${zweites}/sources/text`)
+        .set(auth(alice))
+        .send({ title: 'Fremd', content: 'Inhalt. '.repeat(30) });
+
+      await request(app)
+        .patch(`/api/notebooks/${notebookId}/sources/selection`)
+        .set(auth(alice))
+        .send({ selected: false });
+
+      // Die Quelle im anderen Notebook bleibt ausgewaehlt.
+      expect(await prisma.source.count({ where: { notebookId: zweites, selected: true } })).toBe(1);
+    });
+
+    it('Bob kann Alices Auswahl nicht umstellen', async () => {
+      await dreiQuellen();
+      const res = await request(app)
+        .patch(`/api/notebooks/${notebookId}/sources/selection`)
+        .set(auth(bob))
+        .send({ selected: false });
+
+      expect(res.status).toBe(404);
+      expect(await prisma.source.count({ where: { notebookId, selected: true } })).toBe(3);
+    });
+  });
+
   describe('Auswahl', () => {
     it('lässt sich abwählen und wieder anwählen', async () => {
       const created = await request(app)

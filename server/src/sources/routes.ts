@@ -275,19 +275,57 @@ sourcesRouter.get(
   }),
 );
 
+/**
+ * Sammelauswahl: alle Quellen eines Notebooks auf einmal an- oder abwählen.
+ *
+ * Ein einziges `updateMany` statt einer Anfrage je Quelle. Bei fünfzig Quellen
+ * ist der Unterschied fünfzig Netzumläufe und fünfzig Transaktionen gegen eine.
+ * Ausserdem ist das Ergebnis dadurch atomar: es gibt keinen Zwischenzustand, in
+ * dem die Hälfte umgestellt ist.
+ *
+ * Steht VOR der Route mit `:sourceId`, sonst würde "selection" als Quellen-ID
+ * gelesen - Express nimmt die erste passende Route, nicht die spezifischste.
+ */
+sourcesRouter.patch(
+  '/:notebookId/sources/selection',
+  asyncHandler(async (req, res) => {
+    const { notebookId } = parseParams(notebookParams, req);
+    const notebook = await requireNotebook(notebookId, currentUserId(req));
+    const { selected } = parseBody(z.object({ selected: z.boolean() }), req);
+
+    const { count } = await prisma.source.updateMany({
+      where: { notebookId: notebook.id },
+      data: { selected },
+    });
+
+    res.json({ updated: count, selected });
+  }),
+);
+
 sourcesRouter.patch(
   '/:notebookId/sources/:sourceId',
   asyncHandler(async (req, res) => {
     const { notebookId, sourceId } = parseParams(sourceParams, req);
     await requireSource(sourceId, notebookId, currentUserId(req));
 
-    const { selected } = parseBody(z.object({ selected: z.boolean() }), req);
+    // Beide Felder einzeln optional, aber mindestens eines verlangt. Ein leerer
+    // Rumpf wäre sonst ein erfolgreicher Aufruf, der nichts tut - und der
+    // Aufrufer bekäme keinen Hinweis, dass er sich vertippt hat.
+    const änderung = parseBody(
+      z
+        .object({ selected: z.boolean().optional(), title: titleSchema.optional() })
+        .refine((value) => value.selected !== undefined || value.title !== undefined, {
+          message: 'mindestens eines von selected oder title angeben',
+        }),
+      req,
+    );
 
     // `updateMany` mit notebookId im where: auch der schreibende Zugriff geht
     // über das Notebook, nicht über die Quellen-ID allein.
-    await prisma.source.updateMany({ where: { id: sourceId, notebookId }, data: { selected } });
+    await prisma.source.updateMany({ where: { id: sourceId, notebookId }, data: änderung });
 
-    res.json({ source: { id: sourceId, selected } });
+    const source = await requireSource(sourceId, notebookId, currentUserId(req));
+    res.json({ source: { id: source.id, title: source.title, selected: source.selected } });
   }),
 );
 
