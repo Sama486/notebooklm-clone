@@ -8,6 +8,8 @@ import { streamProbeRouter } from './http/streamProbe.js';
 import { authRouter } from './auth/routes.js';
 import { requireAuth } from './auth/middleware.js';
 import { notebooksRouter } from './notebooks/routes.js';
+import { sourcesRouter } from './sources/routes.js';
+import { chatRouter } from './chat/routes.js';
 
 export function createApp() {
   const app = express();
@@ -64,6 +66,8 @@ export function createApp() {
   // spaeter hinzugefuegte Route in diesen Dateien ist damit von sich aus
   // geschuetzt, ohne dass jemand daran denken muss.
   app.use('/api/notebooks', requireAuth, notebooksRouter);
+  app.use('/api/notebooks', requireAuth, sourcesRouter);
+  app.use('/api/notebooks', requireAuth, chatRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -4,6 +4,10 @@
  * Erzeugt statt mitgeliefert: eine Binaerdatei im Repo koennte niemand lesen
  * oder pruefen, und der Test soll nachvollziehbar bleiben. Ausserdem laesst
  * sich so gezielt ein PDF bauen, das einen Injektionsversuch enthaelt.
+ *
+ * Eine Seite fasst etwa 45 umbrochene Zeilen zu 90 Zeichen, also rund 4.000
+ * Zeichen. Mehr laeuft unten aus der Seite heraus und fehlt anschliessend im
+ * extrahierten Text - fuer laengere Texte also mehrere Seiten uebergeben.
  */
 export function makePdf(pages: string[]): Buffer {
   const objects: string[] = [];
@@ -24,7 +28,10 @@ export function makePdf(pages: string[]): Buffer {
       `/Resources << /Font << /F1 3 0 R >> >> /Contents ${contentIds[i]} 0 R >>`;
 
     // Eine Zeile je Textzeile, damit pdfjs Zeilenumbrueche liefert.
-    const lines = text.split('\n');
+    // Umbrechen, bevor der Text ueber den rechten Seitenrand hinauslaeuft:
+    // was dort landet, liefert pdfjs nicht mehr zurueck, und das Test-PDF waere
+    // stillschweigend kuerzer als beabsichtigt.
+    const lines = text.split('\n').flatMap((line) => wrap(line));
     const body = [
       'BT',
       '/F1 12 Tf',
@@ -63,6 +70,30 @@ export function makePdf(pages: string[]): Buffer {
   pdf += `trailer\n<< /Size ${size} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`;
 
   return Buffer.from(pdf, 'latin1');
+}
+
+/**
+ * Bricht eine Zeile an Wortgrenzen um.
+ *
+ * 90 Zeichen passen bei Helvetica 12pt in die Breite einer A4-aehnlichen Seite
+ * (612pt minus Rand). Laengere Zeilen laufen aus der Seite heraus und fehlen
+ * anschliessend im extrahierten Text.
+ */
+function wrap(line: string, maxChars = 90): string[] {
+  if (line.length <= maxChars) return [line];
+
+  const lines: string[] = [];
+  let current = '';
+  for (const word of line.split(' ')) {
+    if (current.length + word.length + 1 > maxChars && current.length > 0) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = current.length === 0 ? word : `${current} ${word}`;
+    }
+  }
+  if (current.length > 0) lines.push(current);
+  return lines;
 }
 
 /** Klammern und Backslash haben in PDF-Zeichenketten Sonderbedeutung. */
