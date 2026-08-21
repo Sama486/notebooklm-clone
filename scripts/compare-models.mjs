@@ -30,7 +30,10 @@ if (!apiKey) {
   process.exit(1);
 }
 
-const MODELS = ['gemini-3-flash-preview', 'gemini-3.7-flash'];
+// Kandidaten mit brauchbarem freiem Kontingent. gemini-3-flash-preview faellt
+// aus: die kostenlose Stufe erlaubt dort nur zwanzig Anfragen am Tag, was fuer
+// eine Demo und eine Messung nicht reicht.
+const MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash-lite'];
 
 const PASSAGES = [
   'Passwoerter werden mit bcrypt und dem Kostenfaktor zwoelf gehasht. Zwoelf statt der verbreiteten zehn bedeutet viermal so viel Rechenzeit je Versuch und liegt fuer den anmeldenden Nutzer weiterhin unter einer viertel Sekunde.',
@@ -99,29 +102,43 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  */
 async function ask(model, question) {
   for (let attempt = 0; attempt < 6; attempt += 1) {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: SYSTEM }] },
-          contents: [{ role: 'user', parts: [{ text: userMessage(question) }] }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
-        }),
-      },
-    );
+    let response;
+    try {
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: SYSTEM }] },
+            contents: [{ role: 'user', parts: [{ text: userMessage(question) }] }],
+            generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
+          }),
+        },
+      );
+    } catch {
+      // Abgerissene Verbindung: kein Grund, eine halbe Stunde Messung
+      // wegzuwerfen. Kurz warten und erneut versuchen.
+      await sleep(5_000 * (attempt + 1));
+      continue;
+    }
 
     if (response.ok) {
       const data = await response.json();
       const parts = data.candidates?.[0]?.content?.parts ?? [];
-      return { text: parts.map((p) => p.text ?? '').join(''), status: 200 };
+      return {
+        text: parts.map((p) => p.text ?? '').join(''),
+        status: 200,
+        // Denkschritte zaehlen gegen das Ausgabe-Kontingent und kosten Zeit.
+        // Ob sie fuer belegte Antworten etwas bringen, ist genau die Frage.
+        thoughts: data.usageMetadata?.thoughtsTokenCount ?? 0,
+      };
     }
 
     // 429 heisst Kontingent: warten und erneut versuchen. Alles andere ist ein
     // echter Fehler, den Wiederholen nicht behebt.
     if (response.status !== 429) return { text: '', status: response.status };
-    await sleep(20_000 * (attempt + 1));
+    await sleep(15_000 * (attempt + 1));
   }
   return { text: '', status: 429 };
 }
@@ -148,16 +165,17 @@ async function main() {
   const results = [];
 
   for (const model of MODELS) {
-    const tally = { missing: 0, outOfRange: 0, insideWord: 0, failed: 0 };
+    const tally = { missing: 0, outOfRange: 0, insideWord: 0, failed: 0, thoughts: 0 };
     const started = Date.now();
 
     for (const question of QUESTIONS) {
-      const { text, status } = await ask(model, question);
+      const { text, status, thoughts } = await ask(model, question);
       if (status !== 200) {
         tally.failed += 1;
         console.log(`  Frage uebersprungen, HTTP ${status}`);
         continue;
       }
+      tally.thoughts += thoughts ?? 0;
       const issues = inspect(text);
       if (issues.missing) tally.missing += 1;
       if (issues.outOfRange) tally.outOfRange += 1;
@@ -170,12 +188,16 @@ async function main() {
   }
 
   console.log('');
-  console.log('| Modell | Beantwortet | Marker fehlt | Nummer erfunden | Marker im Wort | Dauer |');
-  console.log('| --- | ---: | ---: | ---: | ---: | ---: |');
+  console.log(
+    '| Modell | Beantwortet | Marker fehlt | Nummer erfunden | Marker im Wort | Denk-Token | Sekunden je Frage |',
+  );
+  console.log('| --- | ---: | ---: | ---: | ---: | ---: | ---: |');
   for (const r of results) {
+    const perQuestion = r.answered > 0 ? (r.seconds / r.answered).toFixed(1) : '-';
     console.log(
       `| ${r.model} | ${r.answered}/${QUESTIONS.length} | ${r.missing}/${r.answered} |` +
-        ` ${r.outOfRange}/${r.answered} | ${r.insideWord}/${r.answered} | ${r.seconds} s |`,
+        ` ${r.outOfRange}/${r.answered} | ${r.insideWord}/${r.answered} |` +
+        ` ${r.thoughts} | ${perQuestion} |`,
     );
   }
 }

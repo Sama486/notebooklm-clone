@@ -11,7 +11,7 @@ import { sendEvent, setStreamingHeaders } from '../http/streaming.js';
 import { currentUserId } from '../auth/middleware.js';
 import { requireNotebook } from '../data/notebookAccess.js';
 import { getAiClient } from '../ai/index.js';
-import type { ChatMessage } from '../ai/types.js';
+import { AiError, type ChatMessage } from '../ai/types.js';
 import { rankBySimilarity } from './similarity.js';
 import { buildSystemPrompt, buildUserMessage, numberPassages } from './prompt.js';
 import { MarkerScrubber } from './markerScrubber.js';
@@ -186,8 +186,16 @@ chatRouter.post(
       });
       // Header sind laengst raus - ein HTTP-Status geht nicht mehr. Der Fehler
       // kommt deshalb als Ereignis, und das Frontend zeigt ihn im Chatfenster.
+      //
+      // Bei einem voruebergehenden Fehler (Kontingent, Ueberlastung) bekommt
+      // der Nutzer einen Hinweis, der ihm sagt, was zu tun ist. Die Meldung des
+      // Anbieters selbst wird nicht weitergereicht - sie kann Teile des Prompts
+      // enthalten, und der Prompt enthaelt Nutzerdokumente.
+      const temporary = error instanceof AiError && error.retryable;
       sendEvent(res, 'error', {
-        message: 'Die Antwort konnte nicht erzeugt werden. Bitte erneut versuchen.',
+        message: temporary
+          ? 'Der KI-Dienst ist gerade ausgelastet. Bitte in einer Minute erneut fragen.'
+          : 'Die Antwort konnte nicht erzeugt werden. Bitte erneut versuchen.',
       });
       res.end();
       return;
