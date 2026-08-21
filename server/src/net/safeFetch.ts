@@ -35,7 +35,9 @@ export interface FetchedDocument {
 }
 
 export async function fetchExternalUrl(rawUrl: string): Promise<FetchedDocument> {
-  let current = parseAndCheckScheme(rawUrl);
+  // Ergänzt nur die Eingabe des Nutzers, nicht die Ziele von Weiterleitungen -
+  // die sind bereits vollständig aufgelöst.
+  let current = parseAndCheckScheme(addMissingScheme(rawUrl));
   const deadline = Date.now() + limits.fetchUrl.timeoutMs;
 
   for (let hop = 0; hop <= limits.fetchUrl.maxRedirects; hop += 1) {
@@ -64,6 +66,42 @@ export async function fetchExternalUrl(rawUrl: string): Promise<FetchedDocument>
   }
 
   throw unprocessable('Zu viele Weiterleitungen.', 'too_many_redirects');
+}
+
+/**
+ * Ergänzt ein fehlendes `https://`.
+ *
+ * Nutzer tippen "beispiel.de", nicht "https://beispiel.de". Das abzuweisen ist
+ * keine Sicherheitsmaßnahme, sondern eine Fehlbedienung - geprüft wird die
+ * Adresse danach genauso streng.
+ *
+ * Die Unterscheidung, ob vorne schon ein Schema steht, ist der heikle Teil:
+ * `new URL()` liest "data:text/html,..." und "javascript:alert(1)" als Schema,
+ * "beispiel.de:8080" aber ebenfalls. Deshalb die Regel: enthält der Teil vor
+ * dem ersten Doppelpunkt einen Punkt, ist es ein Hostname und kein Schema.
+ * Damit bleibt "data:" ein Schema (und wird abgewiesen), während
+ * "beispiel.de:8080" ergänzt wird.
+ */
+export function addMissingScheme(rawUrl: string): string {
+  const trimmed = rawUrl.trim();
+  if (trimmed === '') return trimmed;
+
+  // Vollständiges Schema mit Doppelschrägstrich: unverändert lassen.
+  if (/^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(trimmed)) return trimmed;
+
+  const colon = trimmed.indexOf(':');
+  const looksLikeScheme = colon > 0 && !trimmed.slice(0, colon).includes('.');
+  if (looksLikeScheme) return trimmed;
+
+  // Nur ergänzen, wenn davor überhaupt etwas steht, das ein Hostname sein
+  // könnte - also ein Punkt im Adressteil. Sonst würde aus dem Vertipper
+  // "keineurl" ein Abruf von "https://keineurl", der erst nach einer
+  // fehlgeschlagenen Namensauflösung scheitert. "Keine gültige URL" ist die
+  // ehrlichere und schnellere Antwort.
+  const authority = trimmed.split(/[/?#]/)[0] ?? '';
+  if (!authority.includes('.')) return trimmed;
+
+  return `https://${trimmed}`;
 }
 
 function parseAndCheckScheme(rawUrl: string): URL {

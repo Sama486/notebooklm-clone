@@ -69,7 +69,13 @@ export function extractHtml(html: string, fallbackTitle: string): ExtractedHtml 
   const text = normalizeWhitespace(container.text());
 
   if (text.length === 0) {
-    throw unprocessable('Auf der Seite ließ sich kein Text finden.', 'html_no_text');
+    // Der häufigste Grund ist eine Seite, die ihren Inhalt erst im Browser per
+    // JavaScript aufbaut. Der Hinweis gehört in die Meldung, sonst sucht der
+    // Nutzer den Fehler bei sich.
+    throw unprocessable(
+      'Auf der Seite ließ sich kein Text finden. Seiten, die ihren Inhalt erst per JavaScript aufbauen, werden nicht unterstützt.',
+      'html_no_text',
+    );
   }
 
   return { title: title || fallbackTitle, text: text.slice(0, limits.source.extractedTextMax) };

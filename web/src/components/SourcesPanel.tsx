@@ -81,9 +81,16 @@ export function SourcesPanel({
         {tab === 'url' && <UrlForm notebookId={notebookId} busy={busy} run={run} />}
 
         {error && (
-          <p role="alert" className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
-            {error}
-          </p>
+          // Der Fehler steht hier oft allein da - eine Quelle wird ja gerade
+          // nicht angelegt. Deshalb ein eigener Kasten mit Rahmen statt einer
+          // kleinen Zeile, die zwischen den Formularfeldern untergeht.
+          <div
+            role="alert"
+            className="mt-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-red-800"
+          >
+            <p className="text-xs font-semibold">Das hat nicht geklappt</p>
+            <p className="mt-0.5 text-xs leading-relaxed">{error}</p>
+          </div>
         )}
       </div>
 
@@ -304,7 +311,7 @@ function UrlForm({ notebookId, busy, run }: FormProps) {
       <input
         value={url}
         onChange={(event) => setUrl(event.target.value)}
-        placeholder="https://..."
+        placeholder="beispiel.de oder https://beispiel.de"
         required
         maxLength={2000}
         className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-xs focus:border-sky-500 focus:outline-none"

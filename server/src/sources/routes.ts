@@ -185,7 +185,7 @@ sourcesRouter.post(
 
     if (!/text\/html|application\/xhtml|text\/plain/i.test(fetched.contentType)) {
       throw unprocessable(
-        'Unter dieser Adresse liegt keine Textseite.',
+        'Unter dieser Adresse liegt keine Textseite. Unterstützt werden HTML- und Textseiten.',
         'unsupported_content_type',
       );
     }

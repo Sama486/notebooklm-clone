@@ -1,7 +1,7 @@
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { fetchExternalUrl } from './safeFetch.js';
+import { addMissingScheme, fetchExternalUrl } from './safeFetch.js';
 
 /**
  * Die vier Fälle, die zählen, gegen einen echten lokalen HTTP-Server:
@@ -103,8 +103,25 @@ describe('SSRF-Abwehr beim Abruf externer URLs', () => {
     });
   });
 
+  it('ergänzt ein fehlendes https:// und prüft danach genauso', async () => {
+    // "beispiel.de" abzuweisen ist keine Sicherheitsmaßnahme, sondern eine
+    // Fehlbedienung. Die Prüfung greift trotzdem: der Hostname löst intern auf.
+    // Ohne Schema eingegeben - ergänzt wird https://, und die Adresspruefung
+    // greift danach unveraendert.
+    await expect(fetchExternalUrl('127.0.0.1')).rejects.toMatchObject({
+      code: 'blocked_address',
+    });
+    await expect(fetchExternalUrl('169.254.169.254/latest/meta-data/')).rejects.toMatchObject({
+      code: 'blocked_address',
+    });
+  });
+
   it('lehnt kaputte URLs ab', async () => {
-    await expect(fetchExternalUrl('keine-url')).rejects.toMatchObject({ code: 'invalid_url' });
+    // Ohne Punkt im Adressteil wird nichts ergänzt - der Vertipper bekommt
+    // sofort eine klare Antwort statt einer fehlgeschlagenen Namensauflösung.
+    for (const url of ['keine-url', 'localhost', 'https://', 'http://[']) {
+      await expect(fetchExternalUrl(url), url).rejects.toMatchObject({ status: 400 });
+    }
   });
 
   it('gibt in der Fehlermeldung nichts über das Ziel preis', async () => {
@@ -113,5 +130,50 @@ describe('SSRF-Abwehr beim Abruf externer URLs', () => {
     const error = await fetchExternalUrl('http://192.168.13.37/admin').catch((e) => e);
     expect(error.message).not.toContain('192.168');
     expect(error.message).not.toContain('admin');
+  });
+});
+
+describe('Ergänzen eines fehlenden Schemas', () => {
+  it('ergänzt https:// bei einem blossen Hostnamen', () => {
+    expect(addMissingScheme('beispiel.de')).toBe('https://beispiel.de');
+    expect(addMissingScheme('beispiel.de/pfad?a=1')).toBe('https://beispiel.de/pfad?a=1');
+    expect(addMissingScheme('  beispiel.de  ')).toBe('https://beispiel.de');
+  });
+
+  it('erkennt einen Hostnamen mit Port als Hostnamen', () => {
+    // Der Teil vor dem Doppelpunkt enthält einen Punkt - also ein Hostname
+    // und kein Schema.
+    expect(addMissingScheme('beispiel.de:8080')).toBe('https://beispiel.de:8080');
+  });
+
+  it('lässt ein vorhandenes Schema unverändert', () => {
+    for (const url of [
+      'http://beispiel.de',
+      'https://beispiel.de',
+      'HTTPS://beispiel.de',
+      'file:///etc/passwd',
+      'ftp://beispiel.de',
+    ]) {
+      expect(addMissingScheme(url), url).toBe(url);
+    }
+  });
+
+  it('ergänzt nichts ohne Punkt im Adressteil', () => {
+    // Sonst wuerde jeder Vertipper zu einer Namensauflösung.
+    expect(addMissingScheme('keine-url')).toBe('keine-url');
+    expect(addMissingScheme('localhost')).toBe('localhost');
+  });
+
+  it('ergänzt nichts bei schema-artigen Eingaben ohne Punkt', () => {
+    // Sonst würde aus "data:..." ein "https://data:..." und die Ablehnung
+    // käme mit der falschen Begründung - oder gar nicht.
+    for (const url of ['data:text/html,<h1>hi</h1>', 'javascript:alert(1)', 'gopher://x']) {
+      expect(addMissingScheme(url), url).toBe(url);
+    }
+  });
+
+  it('kommt mit leerer Eingabe zurecht', () => {
+    expect(addMissingScheme('')).toBe('');
+    expect(addMissingScheme('   ')).toBe('');
   });
 });
