@@ -1,3 +1,4 @@
+import { CitationChip } from './CitationChip.js';
 import type { Citation } from '../lib/types.js';
 
 /**
@@ -34,15 +35,11 @@ export function AnswerText({ segments, citations, onCitationClick }: AnswerTextP
             if (!citation) return null;
 
             return (
-              <button
+              <CitationChip
                 key={`${index}-${marker}`}
-                type="button"
-                onClick={() => onCitationClick(citation)}
-                title={`${citation.sourceTitle}${citation.page ? `, Seite ${citation.page}` : ''}`}
-                className="mx-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-100 px-1.5 align-baseline text-xs font-semibold text-sky-800 transition hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500"
-              >
-                {marker}
-              </button>
+                citation={citation}
+                onOpen={onCitationClick}
+              />
             );
           })}
         </span>

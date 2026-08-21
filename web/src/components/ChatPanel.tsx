@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { apiRequest, ApiError } from '../lib/api.js';
 import { streamChat } from '../lib/chatStream.js';
 import { AnswerText, segmentsFromStoredMessage } from './AnswerText.js';
+import { buildChatMarkdown, dateiname, downloadMarkdown } from '../lib/exportChat.js';
 import type { Citation, Message } from '../lib/types.js';
 
 /** Eine Antwort, wie sie im Fenster steht - stückweise gewachsen oder geladen. */
@@ -16,11 +17,20 @@ interface DisplayMessage {
 
 interface ChatPanelProps {
   notebookId: string;
+  notebookTitle: string;
   readySourceCount: number;
   onCitationClick: (citation: Citation) => void;
+  /** Speichert eine Antwort als Notiz; meldet zurück, ob es geklappt hat. */
+  onSaveNote: (title: string, content: string, citations: Citation[]) => Promise<boolean>;
 }
 
-export function ChatPanel({ notebookId, readySourceCount, onCitationClick }: ChatPanelProps) {
+export function ChatPanel({
+  notebookId,
+  notebookTitle,
+  readySourceCount,
+  onCitationClick,
+  onSaveNote,
+}: ChatPanelProps) {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [question, setQuestion] = useState('');
   const [streaming, setStreaming] = useState(false);
@@ -28,6 +38,48 @@ export function ChatPanel({ notebookId, readySourceCount, onCitationClick }: Cha
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Kurze Rückmeldung an genau einer Nachricht ("Kopiert", "Gespeichert").
+  const [hinweis, setHinweis] = useState<{ id: string; text: string } | null>(null);
+
+  function zeigeHinweis(id: string, text: string) {
+    setHinweis({ id, text });
+    setTimeout(() => setHinweis((aktuell) => (aktuell?.id === id ? null : aktuell)), 2000);
+  }
+
+  /** Der reine Text einer Nachricht, ohne die Chips. */
+  const textVon = (message: DisplayMessage) => message.segments.map((s) => s.text).join('');
+
+  async function kopieren(message: DisplayMessage) {
+    try {
+      await navigator.clipboard.writeText(textVon(message).trim());
+      zeigeHinweis(message.id, 'Kopiert');
+    } catch {
+      // Die Zwischenablage ist ohne sicheren Kontext oder ohne Erlaubnis nicht
+      // verfügbar. Kein Grund für eine Fehlermeldung - nur kein Erfolg melden.
+      zeigeHinweis(message.id, 'Kopieren nicht möglich');
+    }
+  }
+
+  async function alsNotizSpeichern(message: DisplayMessage) {
+    const text = textVon(message).trim();
+    // Die erste Zeile als Titel, gekürzt - der Nutzer kann sie danach ändern.
+    const titel = (text.split('\n')[0] ?? 'Notiz').slice(0, 120) || 'Notiz';
+    const erfolg = await onSaveNote(titel, text, message.citations);
+    zeigeHinweis(message.id, erfolg ? 'Als Notiz gespeichert' : 'Speichern fehlgeschlagen');
+  }
+
+  function exportieren() {
+    const inhalt = buildChatMarkdown(
+      notebookTitle,
+      messages.map((message) => ({
+        role: message.role,
+        text: textVon(message),
+        citations: message.citations,
+      })),
+    );
+    downloadMarkdown(inhalt, dateiname(notebookTitle));
+  }
 
   // Verlauf laden, wenn das Notebook wechselt.
   useEffect(() => {
@@ -129,8 +181,17 @@ export function ChatPanel({ notebookId, readySourceCount, onCitationClick }: Cha
 
   return (
     <section className="flex h-full flex-col bg-slate-50">
-      <header className="border-b border-slate-200 bg-white px-4 py-3">
+      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Chat</h2>
+        {messages.length > 0 && (
+          <button
+            type="button"
+            onClick={exportieren}
+            className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 transition hover:bg-slate-100"
+          >
+            Als Markdown exportieren
+          </button>
+        )}
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
@@ -174,6 +235,27 @@ export function ChatPanel({ notebookId, readySourceCount, onCitationClick }: Cha
                     <p className="mt-2 rounded bg-red-50 px-2 py-1 text-xs text-red-700">
                       {message.error}
                     </p>
+                  )}
+                  {!message.streaming && !message.error && textVon(message).trim() !== '' && (
+                    <div className="mt-2 flex items-center gap-2 border-t border-slate-100 pt-1.5">
+                      <button
+                        type="button"
+                        onClick={() => void kopieren(message)}
+                        className="rounded px-1.5 py-0.5 text-[11px] text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                      >
+                        Kopieren
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void alsNotizSpeichern(message)}
+                        className="rounded px-1.5 py-0.5 text-[11px] text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                      >
+                        Als Notiz speichern
+                      </button>
+                      {hinweis?.id === message.id && (
+                        <span className="text-[11px] text-emerald-700">{hinweis.text}</span>
+                      )}
+                    </div>
                   )}
                 </>
               )}

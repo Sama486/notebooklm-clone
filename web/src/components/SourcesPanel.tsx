@@ -37,6 +37,9 @@ export function SourcesPanel({
   const [tab, setTab] = useState<'pdf' | 'text' | 'url'>('pdf');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [umbenannt, setUmbenannt] = useState<{ id: string; titel: string } | null>(null);
+
+  const alleAusgewaehlt = sources.length > 0 && sources.every((quelle) => quelle.selected);
 
   async function run(action: () => Promise<unknown>) {
     setBusy(true);
@@ -53,8 +56,25 @@ export function SourcesPanel({
 
   return (
     <section className="flex h-full flex-col border-r border-slate-200 bg-white">
-      <header className="border-b border-slate-200 px-4 py-3">
+      <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Quellen</h2>
+        {sources.length > 1 && (
+          <button
+            type="button"
+            onClick={() =>
+              void run(() =>
+                // Eine Anfrage für alle Quellen statt einer je Quelle.
+                apiRequest(`/api/notebooks/${notebookId}/sources/selection`, {
+                  method: 'PATCH',
+                  body: { selected: !alleAusgewaehlt },
+                }),
+              )
+            }
+            className="rounded px-2 py-1 text-xs text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+          >
+            {alleAusgewaehlt ? 'Alle abwählen' : 'Alle auswählen'}
+          </button>
+        )}
       </header>
 
       <div className="border-b border-slate-200 px-4 py-3">
@@ -128,9 +148,36 @@ export function SourcesPanel({
                   className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-500 disabled:opacity-40"
                 />
 
+                {umbenannt?.id === source.id ? (
+                  <input
+                    autoFocus
+                    value={umbenannt.titel}
+                    onChange={(event) => setUmbenannt({ id: source.id, titel: event.target.value })}
+                    onBlur={async () => {
+                      const neu = umbenannt.titel.trim();
+                      setUmbenannt(null);
+                      if (neu && neu !== source.title) {
+                        await run(() =>
+                          apiRequest(`/api/notebooks/${notebookId}/sources/${source.id}`, {
+                            method: 'PATCH',
+                            body: { title: neu },
+                          }),
+                        );
+                      }
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') event.currentTarget.blur();
+                      if (event.key === 'Escape') setUmbenannt(null);
+                    }}
+                    maxLength={200}
+                    className="min-w-0 flex-1 rounded border border-sky-400 px-1 py-0.5 text-sm focus:outline-none"
+                  />
+                ) : (
                 <button
                   type="button"
                   onClick={() => onOpenSource(source.id)}
+                  onDoubleClick={() => setUmbenannt({ id: source.id, titel: source.title })}
+                  title="Klicken zum Öffnen, Doppelklick zum Umbenennen"
                   className="min-w-0 flex-1 text-left"
                 >
                   <span className="block truncate text-sm font-medium text-slate-900">
@@ -143,6 +190,7 @@ export function SourcesPanel({
                     {source.status === 'ready' && ` · ${source.chunkCount} Abschnitte`}
                   </span>
                 </button>
+                )}
 
                 <button
                   type="button"
@@ -196,31 +244,52 @@ interface FormProps {
 function PdfForm({ notebookId, busy, run }: FormProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [fortschritt, setFortschritt] = useState<string | null>(null);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    const file = inputRef.current?.files?.[0];
-    if (!file) return;
+    const dateien = [...(inputRef.current?.files ?? [])];
+    if (dateien.length === 0) return;
 
     // Vorabprüfung im Browser: erspart dem Nutzer, 20 MB hochzuladen und dann
     // ein 413 zu bekommen. Die verbindliche Grenze steht trotzdem auf dem
     // Server - diese hier lässt sich umgehen.
-    if (file.size > MAX_PDF_BYTES) {
-      setLocalError('Die Datei ist größer als 15 MB.');
+    const zuGross = dateien.find((datei) => datei.size > MAX_PDF_BYTES);
+    if (zuGross) {
+      setLocalError(`"${zuGross.name}" ist größer als 15 MB.`);
       return;
     }
     setLocalError(null);
 
-    // Der Dateiname wird als Titel vorgeschlagen, mehr nicht - er berührt
-    // serverseitig keinen Pfad.
-    const title = file.name.replace(/\.pdf$/i, '').slice(0, 200) || 'Dokument';
-
     await run(async () => {
-      await rawRequest(
-        `/api/notebooks/${notebookId}/sources/pdf?title=${encodeURIComponent(title)}`,
-        { method: 'POST', raw: { data: file, contentType: 'application/pdf' } },
-      );
+      const fehlgeschlagen: string[] = [];
+
+      // Nacheinander, nicht gleichzeitig. Zehn PDFs parallel hochzuladen würde
+      // das Rate-Limit auslösen und auf einer Instanz mit 512 MB alle Dateien
+      // gleichzeitig in den Speicher holen.
+      for (const [index, datei] of dateien.entries()) {
+        setFortschritt(`${index + 1} von ${dateien.length}: ${datei.name}`);
+
+        // Der Dateiname wird als Titel vorgeschlagen, mehr nicht - er berührt
+        // serverseitig keinen Pfad.
+        const title = datei.name.replace(/\.pdf$/i, '').slice(0, 200) || 'Dokument';
+        try {
+          await rawRequest(
+            `/api/notebooks/${notebookId}/sources/pdf?title=${encodeURIComponent(title)}`,
+            { method: 'POST', raw: { data: datei, contentType: 'application/pdf' } },
+          );
+        } catch {
+          // Eine kaputte Datei soll die übrigen nicht aufhalten - gemeldet
+          // wird sie am Ende gesammelt.
+          fehlgeschlagen.push(datei.name);
+        }
+      }
+
+      setFortschritt(null);
       if (inputRef.current) inputRef.current.value = '';
+      if (fehlgeschlagen.length > 0) {
+        setLocalError(`Nicht eingelesen: ${fehlgeschlagen.join(', ')}`);
+      }
     });
   }
 
@@ -230,16 +299,18 @@ function PdfForm({ notebookId, busy, run }: FormProps) {
         ref={inputRef}
         type="file"
         accept="application/pdf"
+        multiple
         required
         className="block w-full text-xs text-slate-600 file:mr-2 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 file:text-xs file:font-medium"
       />
+      {fortschritt && <p className="text-xs text-slate-500">{fortschritt}</p>}
       {localError && <p className="text-xs text-red-700">{localError}</p>}
       <button
         type="submit"
         disabled={busy}
         className="w-full rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-sky-700 disabled:opacity-50"
       >
-        Hochladen
+        {busy ? 'Wird hochgeladen…' : 'Hochladen'}
       </button>
     </form>
   );

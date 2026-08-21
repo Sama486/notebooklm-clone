@@ -4,7 +4,8 @@ import { apiRequest, ApiError } from '../lib/api.js';
 import { SourcesPanel } from '../components/SourcesPanel.js';
 import { ChatPanel } from '../components/ChatPanel.js';
 import { DocumentPanel } from '../components/DocumentPanel.js';
-import type { Citation, NotebookSummary, Source } from '../lib/types.js';
+import { NotesPanel } from '../components/NotesPanel.js';
+import type { Citation, NotebookSummary, Note, Source } from '../lib/types.js';
 
 /** Abstand, in dem während der Verarbeitung nach dem Status gefragt wird. */
 const POLL_INTERVAL_MS = 1500;
@@ -18,6 +19,53 @@ export function NotebookPage() {
 
   const [openSourceId, setOpenSourceId] = useState<string | null>(null);
   const [citation, setCitation] = useState<Citation | null>(null);
+
+  // Die rechte Spalte zeigt entweder das Dokument oder die Notizen.
+  const [rechteSpalte, setRechteSpalte] = useState<'dokument' | 'notizen'>('dokument');
+  const [notes, setNotes] = useState<Note[]>([]);
+
+  const loadNotes = useCallback(async () => {
+    try {
+      const data = await apiRequest<{ notes: Note[] }>(`/api/notebooks/${notebookId}/notes`);
+      setNotes(data.notes);
+    } catch {
+      // Fehlende Notizen machen die Seite nicht unbenutzbar.
+      setNotes([]);
+    }
+  }, [notebookId]);
+
+  /**
+   * Alle schreibenden Notiz-Aktionen laufen hier durch.
+   *
+   * Nach jeder Änderung wird die Liste neu geladen statt lokal fortgeschrieben.
+   * Das ist eine Anfrage mehr, aber der Zustand im Browser kann dadurch nicht
+   * von dem in der Datenbank abweichen - bei höchstens zweihundert Notizen ist
+   * das der bessere Tausch.
+   */
+  const notizAktion = useCallback(
+    async (aktion: () => Promise<unknown>): Promise<boolean> => {
+      try {
+        await aktion();
+        await loadNotes();
+        return true;
+      } catch (caught) {
+        setError(caught instanceof ApiError ? caught.message : 'Aktion fehlgeschlagen.');
+        return false;
+      }
+    },
+    [loadNotes],
+  );
+
+  const saveNote = useCallback(
+    (title: string, content: string, citations: Citation[]) =>
+      notizAktion(() =>
+        apiRequest(`/api/notebooks/${notebookId}/notes`, {
+          method: 'POST',
+          body: { title, content, citations },
+        }),
+      ),
+    [notebookId, notizAktion],
+  );
 
   const loadSources = useCallback(async () => {
     try {
@@ -50,10 +98,11 @@ export function NotebookPage() {
     }
 
     void load();
+    void loadNotes();
     return () => {
       cancelled = true;
     };
-  }, [notebookId]);
+  }, [notebookId, loadNotes]);
 
   /**
    * Nach dem Status fragen, solange etwas verarbeitet wird - und nur dann.
@@ -81,6 +130,9 @@ export function NotebookPage() {
   function openCitation(next: Citation) {
     setCitation(next);
     setOpenSourceId(next.sourceId);
+    // Ein Klick auf einen Beleg meint immer das Dokument, auch wenn gerade die
+    // Notizen offen sind.
+    setRechteSpalte('dokument');
   }
 
   const readySourceCount = sources.filter((s) => s.status === 'ready' && s.selected).length;
@@ -127,21 +179,72 @@ export function NotebookPage() {
         <div className="min-h-0">
           <ChatPanel
             notebookId={notebookId}
+            notebookTitle={notebook?.title ?? 'Notebook'}
             readySourceCount={readySourceCount}
             onCitationClick={openCitation}
+            onSaveNote={saveNote}
           />
         </div>
 
-        <div className="min-h-0">
-          <DocumentPanel
-            notebookId={notebookId}
-            sourceId={openSourceId}
-            citation={citation}
-            onClose={() => {
-              setOpenSourceId(null);
-              setCitation(null);
-            }}
-          />
+        <div className="flex min-h-0 flex-col border-l border-slate-200 bg-white">
+          <div className="flex gap-1 border-b border-slate-200 px-3 py-2">
+            {(['dokument', 'notizen'] as const).map((bereich) => (
+              <button
+                key={bereich}
+                type="button"
+                onClick={() => setRechteSpalte(bereich)}
+                className={`rounded px-2.5 py-1 text-xs font-medium transition ${
+                  rechteSpalte === bereich
+                    ? 'bg-slate-100 text-slate-900'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {bereich === 'dokument' ? 'Dokument' : `Notizen${notes.length ? ` (${notes.length})` : ''}`}
+              </button>
+            ))}
+          </div>
+
+          <div className="min-h-0 flex-1">
+            {rechteSpalte === 'dokument' ? (
+              <DocumentPanel
+                notebookId={notebookId}
+                sourceId={openSourceId}
+                citation={citation}
+                onClose={() => {
+                  setOpenSourceId(null);
+                  setCitation(null);
+                }}
+              />
+            ) : (
+              <NotesPanel
+                notes={notes}
+                onCreate={(title, content) =>
+                  notizAktion(() =>
+                    apiRequest(`/api/notebooks/${notebookId}/notes`, {
+                      method: 'POST',
+                      body: { title, content },
+                    }),
+                  )
+                }
+                onRename={(noteId, title) =>
+                  notizAktion(() =>
+                    apiRequest(`/api/notebooks/${notebookId}/notes/${noteId}`, {
+                      method: 'PATCH',
+                      body: { title },
+                    }),
+                  )
+                }
+                onDelete={async (noteId) => {
+                  await notizAktion(() =>
+                    apiRequest(`/api/notebooks/${notebookId}/notes/${noteId}`, {
+                      method: 'DELETE',
+                    }),
+                  );
+                }}
+                onCitationClick={openCitation}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

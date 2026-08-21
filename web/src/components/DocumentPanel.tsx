@@ -54,11 +54,10 @@ export function DocumentPanel({ notebookId, sourceId, citation, onClose }: Docum
 
   if (!sourceId) {
     return (
-      <aside className="hidden h-full flex-col border-l border-slate-200 bg-white lg:flex">
-        <header className="border-b border-slate-200 px-4 py-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Dokument</h2>
-        </header>
-        <div className="flex flex-1 items-center justify-center px-6">
+      // Der Bereich steckt in einer Registerkarte - Rahmen und Überschrift
+      // liefert die Seite, nicht dieses Bauteil.
+      <aside className="flex h-full flex-col bg-white">
+        <div className="flex flex-1 items-center justify-center px-6 py-10">
           <p className="text-center text-sm text-slate-500">
             Klick auf eine Belegnummer in einer Antwort - die zitierte Stelle wird hier
             hervorgehoben.
@@ -73,7 +72,7 @@ export function DocumentPanel({ notebookId, sourceId, citation, onClose }: Docum
   const highlight = citation && citation.sourceId === sourceId ? citation : null;
 
   return (
-    <aside className="flex h-full flex-col border-l border-slate-200 bg-white">
+    <aside className="flex h-full flex-col bg-white">
       <header className="flex items-start justify-between gap-2 border-b border-slate-200 px-4 py-3">
         <div className="min-w-0">
           <h2 className="truncate text-sm font-semibold text-slate-900">

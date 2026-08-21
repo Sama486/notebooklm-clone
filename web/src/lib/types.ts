@@ -48,6 +48,16 @@ export interface Citation {
   snippet: string;
 }
 
+/** Eine gespeicherte Notiz - meist eine Antwort, die behalten werden soll. */
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  citations: Citation[] | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
