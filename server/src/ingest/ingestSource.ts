@@ -27,7 +27,11 @@ export async function ingestSource(sourceId: string, ai: AiClient): Promise<void
   const started = Date.now();
 
   try {
-    await prisma.source.update({
+    // `updateMany` statt `update`: wurde die Quelle inzwischen geloescht, soll
+    // das kein Fehler sein, sondern schlicht null betroffene Zeilen. `update`
+    // wuerde werfen und die geloeschte Quelle in den Fehlerpfad schicken - mit
+    // einer Fehlermeldung im Log fuer einen voellig normalen Vorgang.
+    await prisma.source.updateMany({
       where: { id: sourceId },
       data: { status: 'processing', error: null },
     });
@@ -105,7 +109,7 @@ export async function ingestSource(sourceId: string, ai: AiClient): Promise<void
         : 'Beim Verarbeiten ist ein Fehler aufgetreten. Bitte erneut versuchen.';
 
     await prisma.source
-      .update({ where: { id: sourceId }, data: { status: 'failed', error: message } })
+      .updateMany({ where: { id: sourceId }, data: { status: 'failed', error: message } })
       .catch((updateError: unknown) => {
         // Wenn selbst das Setzen des Fehlerstatus scheitert, ist die Datenbank
         // weg. Dann bleibt nur das Log.

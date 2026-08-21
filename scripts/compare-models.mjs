@@ -1,0 +1,183 @@
+/**
+ * Modellvergleich: welches Modell setzt die Zitat-Marker zuverlaessiger?
+ *
+ *   node scripts/compare-models.mjs
+ *
+ * Zwanzig Fragen gegen dieselben Textstellen, zwei Modelle. Gezaehlt wird, wie
+ * oft ein Marker fehlt, eine Nummer verwendet wird, die es nicht gibt, oder ein
+ * Marker mitten in einem Wort steht.
+ *
+ * Der Grund fuer die Messung: die Belege sind das Kernfeature. Welches Modell
+ * sie sauber setzt, ist eine Tatsachenfrage - und eine halbe Stunde Messung
+ * ersetzt eine Vermutung durch eine belastbare Aussage.
+ *
+ * Braucht GEMINI_API_KEY aus der .env im Wurzelverzeichnis.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const envFile = path.resolve(here, '../.env');
+const apiKey =
+  process.env.GEMINI_API_KEY ??
+  (fs.existsSync(envFile)
+    ? (fs.readFileSync(envFile, 'utf8').match(/^GEMINI_API_KEY\s*=\s*"?([^"\r\n]+)"?/m)?.[1] ?? '')
+    : '');
+
+if (!apiKey) {
+  console.error('GEMINI_API_KEY fehlt.');
+  process.exit(1);
+}
+
+const MODELS = ['gemini-3-flash-preview', 'gemini-3.7-flash'];
+
+const PASSAGES = [
+  'Passwoerter werden mit bcrypt und dem Kostenfaktor zwoelf gehasht. Zwoelf statt der verbreiteten zehn bedeutet viermal so viel Rechenzeit je Versuch und liegt fuer den anmeldenden Nutzer weiterhin unter einer viertel Sekunde.',
+  'Beim Verifizieren eines JWT wird der Algorithmus ausdruecklich als HS256 vorgegeben. Ohne diese Angabe akzeptiert die Bibliothek den Algorithmus, der im Token selbst steht, und ein Angreifer koennte ein Token mit alg none einreichen.',
+  'Der Besitz einer Ressource wird im Zugriffspfad geprueft. Ein Notebook wird mit findFirst und den Bedingungen id und userId geholt, nicht mit findUnique und einer nachgelagerten Bedingung.',
+  'Die Antwort auf einen Zugriff auf fremde Daten ist 404 und nicht 403. Ein 403 wuerde bestaetigen, dass die angefragte Kennung existiert.',
+  'Beim Abruf einer vom Nutzer angegebenen Adresse werden alle aufgeloesten IP-Adressen geprueft, nicht nur die erste. Die geprueffte Adresse wird anschliessend an die Verbindung gebunden, damit zwischen Pruefung und Verbindungsaufbau kein Zeitfenster fuer DNS Rebinding entsteht.',
+  'Der Dateityp eines Uploads wird an den ersten Bytes des Inhalts erkannt, nicht an der Dateiendung und nicht am mitgeschickten Content-Type. Beides bestimmt der Absender frei.',
+  'Die Aehnlichkeitssuche ist ein exakter Durchlauf ueber alle Abschnitte eines Notebooks. Bei zehntausend Abschnitten dauert die Datenbankabfrage vierzehn Sekunden, die Rangfolge im Speicher dagegen nur neun Millisekunden.',
+  'Embeddings werden erzeugt, bevor die Transaktion beginnt. Ein Netzaufruf innerhalb einer offenen Transaktion haelt Verbindung und Sperren so lange, wie der fremde Dienst braucht.',
+  'Ein Zitat-Marker kann beim Streamen zwischen zwei Paketen zerrissen werden. Ein Rueckhaltefenster von hoechstens vier Zeichen am Pufferende loest das, ohne die wahrgenommene Geschwindigkeit zu beeintraechtigen.',
+  'Die Abschnitte tragen die Felder charStart und charEnd. Ohne diese Zeichen-Positionen koennte die Oberflaeche nicht zur zitierten Stelle im Dokument springen.',
+];
+
+const QUESTIONS = [
+  'Welcher Kostenfaktor wird bei bcrypt verwendet?',
+  'Warum zwoelf und nicht zehn?',
+  'Welcher Algorithmus wird beim JWT vorgegeben?',
+  'Was passiert ohne ausdrueckliche Angabe des Algorithmus?',
+  'Wie wird der Besitz einer Ressource geprueft?',
+  'Welche Prisma-Methode wird dafuer verwendet?',
+  'Warum wird 404 statt 403 zurueckgegeben?',
+  'Wie viele IP-Adressen werden beim URL-Abruf geprueft?',
+  'Wogegen schuetzt die Bindung der IP an die Verbindung?',
+  'Woran wird der Dateityp eines Uploads erkannt?',
+  'Warum reicht die Dateiendung nicht aus?',
+  'Wie lange dauert die Datenbankabfrage bei zehntausend Abschnitten?',
+  'Wie lange braucht die Rangfolge im Speicher?',
+  'Wann werden die Embeddings erzeugt?',
+  'Warum liegen die Embeddings ausserhalb der Transaktion?',
+  'Wie gross ist das Rueckhaltefenster beim Streamen?',
+  'Welches Problem loest das Rueckhaltefenster?',
+  'Welche Felder tragen die Zeichen-Positionen?',
+  'Wozu werden charStart und charEnd gebraucht?',
+  'Welche Rolle spielt der Content-Type beim Upload?',
+];
+
+const SYSTEM = [
+  'Du beantwortest Fragen ausschliesslich auf Grundlage der Textstellen, die dir der Nutzer mitschickt.',
+  '',
+  'Regeln:',
+  '1. Antworte nur mit dem, was in den Textstellen steht.',
+  '2. Steht die Antwort nicht dort, sage genau das.',
+  '3. Belege jede Aussage mit der Nummer der Textstelle in eckigen Klammern, zum Beispiel [1]. Setze den Marker direkt hinter die Aussage. Verwende nur Nummern, die es wirklich gibt.',
+  '4. Antworte auf Deutsch, sachlich und knapp.',
+].join('\n');
+
+const userMessage = (question) =>
+  [
+    'Textstellen:',
+    '',
+    ...PASSAGES.map((text, i) => `<<<TEXTSTELLE ${i + 1}\n${text}\nENDE-TEXTSTELLE>>>`),
+    '',
+    `Frage: ${question}`,
+  ].join('\n');
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Eine Frage stellen, mit Wiederholung bei Kontingentfehlern.
+ *
+ * Die kostenlose Stufe erlaubt nur wenige Anfragen je Minute. Ohne Wiederholung
+ * scheitert der Grossteil der Aufrufe mit 429, und die Messung zaehlt dann
+ * nicht die Qualitaet der Marker, sondern das Kontingent - ein Ergebnis, das
+ * schlimmer waere als keines, weil es echt aussieht.
+ */
+async function ask(model, question) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: SYSTEM }] },
+          contents: [{ role: 'user', parts: [{ text: userMessage(question) }] }],
+          generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
+        }),
+      },
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      const parts = data.candidates?.[0]?.content?.parts ?? [];
+      return { text: parts.map((p) => p.text ?? '').join(''), status: 200 };
+    }
+
+    // 429 heisst Kontingent: warten und erneut versuchen. Alles andere ist ein
+    // echter Fehler, den Wiederholen nicht behebt.
+    if (response.status !== 429) return { text: '', status: response.status };
+    await sleep(20_000 * (attempt + 1));
+  }
+  return { text: '', status: 429 };
+}
+
+/** Zaehlt die drei Fehlerarten in einer Antwort. */
+function inspect(text) {
+  const markers = [...text.matchAll(/\[(\d{1,3})\]/g)];
+
+  return {
+    missing: markers.length === 0,
+    // Nummer, die es in den Textstellen nicht gibt.
+    outOfRange: markers.some((m) => {
+      const n = Number.parseInt(m[1], 10);
+      return n < 1 || n > PASSAGES.length;
+    }),
+    // Marker klebt zwischen zwei Buchstaben - im Fliesstext unlesbar.
+    insideWord: /\p{L}\[\d{1,3}\]\p{L}/u.test(text),
+  };
+}
+
+async function main() {
+  console.log(`${QUESTIONS.length} Fragen, ${PASSAGES.length} Textstellen, ${MODELS.length} Modelle.\n`);
+
+  const results = [];
+
+  for (const model of MODELS) {
+    const tally = { missing: 0, outOfRange: 0, insideWord: 0, failed: 0 };
+    const started = Date.now();
+
+    for (const question of QUESTIONS) {
+      const { text, status } = await ask(model, question);
+      if (status !== 200) {
+        tally.failed += 1;
+        console.log(`  Frage uebersprungen, HTTP ${status}`);
+        continue;
+      }
+      const issues = inspect(text);
+      if (issues.missing) tally.missing += 1;
+      if (issues.outOfRange) tally.outOfRange += 1;
+      if (issues.insideWord) tally.insideWord += 1;
+    }
+
+    tally.answered = QUESTIONS.length - tally.failed;
+    results.push({ model, ...tally, seconds: Math.round((Date.now() - started) / 1000) });
+    console.log(`${model} fertig (${Math.round((Date.now() - started) / 1000)} s)`);
+  }
+
+  console.log('');
+  console.log('| Modell | Beantwortet | Marker fehlt | Nummer erfunden | Marker im Wort | Dauer |');
+  console.log('| --- | ---: | ---: | ---: | ---: | ---: |');
+  for (const r of results) {
+    console.log(
+      `| ${r.model} | ${r.answered}/${QUESTIONS.length} | ${r.missing}/${r.answered} |` +
+        ` ${r.outOfRange}/${r.answered} | ${r.insideWord}/${r.answered} | ${r.seconds} s |`,
+    );
+  }
+}
+
+await main();

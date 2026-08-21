@@ -74,7 +74,10 @@ export const limits = {
   },
 
   chat: {
-    model: 'gemini-3-flash',
+    // Ausgewaehlt ueber scripts/compare-models.mjs - zwanzig Fragen gegen zwei
+    // Modelle, gezaehlt wurde, wie oft ein Zitat-Marker fehlt, eine erfundene
+    // Nummer traegt oder mitten im Wort steht. Ergebnis im README.
+    model: 'gemini-3-flash-preview',
     topK: 8, // Anzahl der Textstellen, die in den Prompt gehen
     questionMax: 2000,
     historyMessages: 6, // wie viel Gespraechsverlauf in den Prompt geht
