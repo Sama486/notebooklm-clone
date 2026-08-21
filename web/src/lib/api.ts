@@ -56,6 +56,23 @@ interface RequestOptions {
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const response = await rawRequest(path, options);
   if (response.status === 204) return undefined as T;
+
+  // Antwort auf JSON pruefen, statt blind zu parsen.
+  //
+  // Zeigt VITE_API_URL versehentlich auf das Frontend statt auf die API, dann
+  // beantwortet der Static-Host jeden Pfad mit index.html - und zwar mit
+  // Status 200. Ohne diese Pruefung scheitert erst `response.json()` an einem
+  // "<", und der Nutzer bekaeme "Es ist ein Fehler aufgetreten" fuer einen
+  // reinen Konfigurationsfehler. Genau das ist beim ersten Deployment passiert.
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    throw new ApiError(
+      response.status,
+      'unexpected_response',
+      'Der Server hat keine gueltige Antwort geliefert. Ist die API-Adresse richtig konfiguriert?',
+    );
+  }
+
   return (await response.json()) as T;
 }
 
