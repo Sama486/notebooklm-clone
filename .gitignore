@@ -19,3 +19,6 @@ coverage/
 
 # Prisma erzeugter Client
 server/src/generated/
+
+# Vite-Build
+web/dist/
