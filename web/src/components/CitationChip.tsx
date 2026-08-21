@@ -1,5 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Citation } from '../lib/types.js';
+
+/**
+ * Geschätzte Höhe der Vorschau. Genügt, um zu entscheiden, ob sie über oder
+ * unter den Chip gehört - auf den Pixel genau muss das nicht sein.
+ */
+const VORSCHAU_HOEHE = 190;
 
 /**
  * Eine anklickbare Belegnummer mit Vorschau der zitierten Stelle.
@@ -20,17 +26,36 @@ export function CitationChip({
   onOpen: (citation: Citation) => void;
 }) {
   const [zeigeVorschau, setZeigeVorschau] = useState(false);
+  const [nachUnten, setNachUnten] = useState(false);
+  const chipRef = useRef<HTMLButtonElement>(null);
+
+  /**
+   * Entscheidet, auf welcher Seite die Vorschau aufgeht.
+   *
+   * Der Chat liegt in einem scrollbaren Bereich. Eine Vorschau über einem Chip
+   * am oberen Rand wird an dessen Kante abgeschnitten - gemessen waren das
+   * 172 fehlende Pixel. Ist oben zu wenig Platz, klappt sie deshalb nach unten.
+   */
+  function oeffnen() {
+    const chip = chipRef.current?.getBoundingClientRect();
+    const bereich = chipRef.current?.closest('.overflow-y-auto')?.getBoundingClientRect();
+    const platzOben = chip && bereich ? chip.top - bereich.top : Number.POSITIVE_INFINITY;
+
+    setNachUnten(platzOben < VORSCHAU_HOEHE);
+    setZeigeVorschau(true);
+  }
 
   return (
     <span className="relative inline-block">
       <button
+        ref={chipRef}
         type="button"
         onClick={() => onOpen(citation)}
-        onMouseEnter={() => setZeigeVorschau(true)}
+        onMouseEnter={oeffnen}
         onMouseLeave={() => setZeigeVorschau(false)}
         // Auch per Tastatur erreichbar: wer sich durchtabbt, sieht dieselbe
         // Vorschau wie mit der Maus.
-        onFocus={() => setZeigeVorschau(true)}
+        onFocus={oeffnen}
         onBlur={() => setZeigeVorschau(false)}
         aria-label={`Beleg ${citation.marker}: ${citation.sourceTitle}`}
         className="mx-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-100 px-1.5 align-baseline text-xs font-semibold text-sky-800 transition hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500"
@@ -43,7 +68,9 @@ export function CitationChip({
           role="tooltip"
           // `pointer-events-none`: die Vorschau soll den Klick auf den Chip
           // nicht abfangen, wenn sie unter dem Mauszeiger aufgeht.
-          className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 w-72 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-3 text-left shadow-lg"
+          className={`pointer-events-none absolute left-1/2 z-20 w-72 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-3 text-left shadow-lg ${
+            nachUnten ? 'top-full mt-1.5' : 'bottom-full mb-1.5'
+          }`}
         >
           <span className="block truncate text-xs font-semibold text-slate-900">
             {citation.sourceTitle}
