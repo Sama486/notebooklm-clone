@@ -17,11 +17,24 @@
  * ist genau der Teil billig testbar, in dem die Fehler sitzen.
  */
 
-export interface ScrubResult {
-  /** Text, der sofort an den Client gehen darf. */
+/**
+ * Ein Stueck Text und die Marker, die unmittelbar DAHINTER standen.
+ *
+ * Die Aufteilung in Segmente ist der Grund, warum das Ergebnis nicht einfach
+ * aus Text plus einer Liste von Nummern besteht: ein Paket kann mehrere Marker
+ * an verschiedenen Stellen enthalten ("A [1] B [2] C"). Wer nur sammelt, welche
+ * Nummern vorkamen, weiss nicht mehr, wo sie standen - und die Oberflaeche
+ * haengt dann alle Chips ans Ende des Pakets statt hinter die Aussage, die sie
+ * belegen. Aus "koennte [1]." wuerde "koennte ." gefolgt vom Chip.
+ */
+export interface Segment {
   text: string;
-  /** Marker-Nummern in der Reihenfolge ihres Auftretens. */
   markers: number[];
+}
+
+export interface ScrubResult {
+  /** Segmente, die sofort an den Client gehen duerfen - in Reihenfolge. */
+  segments: Segment[];
 }
 
 /**
@@ -32,6 +45,9 @@ export interface ScrubResult {
  * den Strom unbegrenzt anhaelt.
  */
 const MAX_HELD = 4;
+
+/** Wie viele Leerzeichen hoechstens mit zurueckgehalten werden. */
+const MAX_HELD_SPACES = 4;
 
 const COMPLETE_MARKER = /\[(\d{1,3})\]/g;
 
@@ -80,29 +96,75 @@ export class MarkerScrubber {
     for (let i = buffer.length - 1; i >= windowStart; i -= 1) {
       if (buffer[i] !== '[') continue;
       const tail = buffer.slice(i + 1);
-      // Nur Ziffern dahinter und keine schliessende Klammer: koennte noch
-      // einer werden.
-      return /^\d*$/.test(tail) ? i : buffer.length;
+      // Etwas anderes als Ziffern dahinter: das wird kein Marker mehr.
+      if (!/^\d*$/.test(tail)) return buffer.length;
+
+      // Die Leerzeichen unmittelbar davor gehoeren mit ins Rueckhaltefenster.
+      // Sonst waeren sie schon ausgeliefert, wenn sich der Marker als solcher
+      // herausstellt - und die Luecke vor dem Chip liesse sich nicht mehr
+      // schliessen, weil das Leerzeichen in einem frueheren Paket steckt.
+      return pullBackSpaces(buffer, i);
     }
-    return buffer.length;
+
+    // Kein angefangener Marker in Sicht. Trotzdem bleiben Leerzeichen am
+    // Pufferende zurueck: sie koennten vor einem Marker stehen, der erst im
+    // naechsten Paket beginnt. Kommen sie schon jetzt heraus, liesse sich die
+    // Luecke vor dem Chip spaeter nicht mehr schliessen - genau das passiert
+    // bei Paketgroesse eins, wo jedes Zeichen einzeln ankommt.
+    return pullBackSpaces(buffer, buffer.length);
   }
 }
 
 /**
- * Entfernt vollstaendige Marker aus einem entschiedenen Textstueck und gibt
- * ihre Nummern zurueck.
+ * Verschiebt den Anfang des Rueckhaltefensters ueber unmittelbar davor
+ * stehende Leerzeichen nach vorn.
  *
- * Der Marker verschwindet aus dem Text: die Oberflaeche setzt an seiner Stelle
- * einen anklickbaren Chip. Wuerde er stehen bleiben, stuende die Nummer doppelt
- * da - einmal als Text, einmal als Chip.
+ * Begrenzt, damit eine lange Folge von Leerzeichen den Strom nicht anhaelt.
+ */
+function pullBackSpaces(buffer: string, from: number): number {
+  const limit = Math.max(0, from - MAX_HELD_SPACES);
+  let start = from;
+  while (start > limit && (buffer[start - 1] === ' ' || buffer[start - 1] === '\t')) start -= 1;
+  return start;
+}
+
+/**
+ * Zerlegt ein entschiedenes Textstueck an seinen Markern in Segmente.
+ *
+ * Der Marker selbst verschwindet aus dem Text: die Oberflaeche setzt an seiner
+ * Stelle einen anklickbaren Chip. Wuerde er stehen bleiben, stuende die Nummer
+ * doppelt da - einmal als Text, einmal als Chip.
+ *
+ * Ein Leerzeichen unmittelbar vor dem Marker faellt weg. Das Modell schreibt
+ * "... Aussage [1]." - ohne diesen Schritt entstuende "... Aussage " gefolgt
+ * vom Chip und einem einzeln stehenden Punkt.
  */
 function extractMarkers(text: string): ScrubResult {
-  if (!text.includes('[')) return { text, markers: [] };
+  if (!text.includes('[')) {
+    return { segments: text ? [{ text, markers: [] }] : [] };
+  }
 
-  const markers: number[] = [];
-  const cleaned = text.replace(COMPLETE_MARKER, (_match, digits: string) => {
-    markers.push(Number.parseInt(digits, 10));
-    return '';
-  });
-  return { text: cleaned, markers };
+  const segments: Segment[] = [];
+  let cursor = 0;
+
+  COMPLETE_MARKER.lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = COMPLETE_MARKER.exec(text)) !== null) {
+    const before = text.slice(cursor, match.index).replace(/[ \t]+$/, '');
+    const marker = Number.parseInt(match[1] as string, 10);
+
+    const last = segments.at(-1);
+    // Zwei Marker direkt hintereinander ("[1][2]") gehoeren an dasselbe
+    // Textstueck, nicht an ein leeres dazwischen.
+    if (before === '' && last) last.markers.push(marker);
+    else segments.push({ text: before, markers: [marker] });
+
+    cursor = match.index + match[0].length;
+  }
+
+  const rest = text.slice(cursor);
+  if (rest) segments.push({ text: rest, markers: [] });
+
+  return { segments };
 }

@@ -102,13 +102,12 @@ export function ChatPanel({ notebookId, readySourceCount, onCitationClick }: Cha
         trimmed,
         {
           onCitations: (citations) => update((message) => ({ ...message, citations })),
-          onToken: (text, markers) =>
+          onSegments: (segments) =>
             update((message) => ({
               ...message,
-              // Jedes Paket wird ein eigenes Segment. Die Marker gehoeren
-              // hinter genau den Text, der mit ihnen ankam - deshalb wird
-              // nicht einfach an eine Zeichenkette angehaengt.
-              segments: [...message.segments, { text, markers }],
+              // Die Segmente kommen fertig geschnitten vom Server: jeder Chip
+              // steht hinter genau der Aussage, die er belegt.
+              segments: [...message.segments, ...segments],
             })),
           onError: (message) =>
             update((current) => ({ ...current, streaming: false, error: message })),

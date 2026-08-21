@@ -9,9 +9,15 @@ import type { Citation } from './types.js';
  * Server-Logs und im Verlauf des Browsers.
  */
 
+/** Ein Stueck Text und die Marker, die unmittelbar dahinter standen. */
+export interface Segment {
+  text: string;
+  markers: number[];
+}
+
 export interface ChatHandlers {
   onCitations: (citations: Citation[]) => void;
-  onToken: (text: string, markers: number[]) => void;
+  onSegments: (segments: Segment[]) => void;
   onError: (message: string) => void;
   onDone: (citations: Citation[]) => void;
 }
@@ -82,8 +88,8 @@ function dispatch(rawEvent: string, handlers: ChatHandlers): void {
       handlers.onCitations((payload as { citations: Citation[] }).citations);
       break;
     case 'token': {
-      const { text, markers } = payload as { text: string; markers: number[] };
-      handlers.onToken(text, markers ?? []);
+      const { segments } = payload as { segments: Segment[] };
+      if (Array.isArray(segments) && segments.length > 0) handlers.onSegments(segments);
       break;
     }
     case 'error':

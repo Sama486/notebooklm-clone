@@ -4,16 +4,20 @@ import { MarkerScrubber } from './markerScrubber.js';
 /** Schickt Pakete durch den Scrubber und sammelt Text und Marker ein. */
 function run(parts: string[]): { text: string; markers: number[] } {
   const scrubber = new MarkerScrubber();
-  let text = '';
-  const markers: number[] = [];
+  const segments = [...parts.flatMap((part) => scrubber.push(part).segments), ...scrubber.flush().segments];
 
-  for (const part of parts) {
-    const result = scrubber.push(part);
-    text += result.text;
-    markers.push(...result.markers);
-  }
-  const final = scrubber.flush();
-  return { text: text + final.text, markers: [...markers, ...final.markers] };
+  return {
+    text: segments.map((s) => s.text).join(''),
+    markers: segments.flatMap((s) => s.markers),
+  };
+}
+
+/** Baut den Text mit den Markern an ihrer Position wieder zusammen. */
+function withMarkerPositions(parts: string[]): string {
+  const scrubber = new MarkerScrubber();
+  const segments = [...parts.flatMap((part) => scrubber.push(part).segments), ...scrubber.flush().segments];
+
+  return segments.map((s) => s.text + s.markers.map((m) => `<${m}>`).join('')).join('');
 }
 
 /** Zerlegt eine Zeichenkette in Pakete fester Groesse. */
@@ -26,27 +30,39 @@ function split(text: string, size: number): string[] {
 describe('Marker-Erkennung im Antwortstrom', () => {
   it('erkennt einen Marker, der in einem Paket ankommt', () => {
     expect(run(['Die Pruefung erfolgt im Zugriffspfad [1].'])).toEqual({
-      text: 'Die Pruefung erfolgt im Zugriffspfad .',
+      text: 'Die Pruefung erfolgt im Zugriffspfad.',
       markers: [1],
     });
+  });
+
+  it('behaelt die Position des Markers im Text', () => {
+    // Der Chip gehoert hinter die Aussage, die er belegt - nicht ans Ende des
+    // Pakets. Ohne Segmente stuende hier "A B C<1><2>".
+    expect(withMarkerPositions(['A [1] B [2] C'])).toBe('A<1> B<2> C');
+  });
+
+  it('schluckt das Leerzeichen vor dem Marker', () => {
+    // Sonst entstuende "... koennte " + Chip + "." - mit einem einzeln
+    // stehenden Punkt hinter dem Chip.
+    expect(withMarkerPositions(['Das koennte so sein [1].'])).toBe('Das koennte so sein<1>.');
   });
 
   it('erkennt einen Marker, der ueber zwei Pakete zerrissen ist', () => {
     // DER Fall, um den es geht. Ohne Rueckhaltefenster stuende beim Nutzer
     // "... Zugriffspfad [" und danach "3]".
     expect(run(['Die Pruefung erfolgt im Zugriffspfad [', '3] und nirgends sonst.'])).toEqual({
-      text: 'Die Pruefung erfolgt im Zugriffspfad  und nirgends sonst.',
+      text: 'Die Pruefung erfolgt im Zugriffspfad und nirgends sonst.',
       markers: [3],
     });
   });
 
   it('erkennt einen Marker, der ueber drei Pakete zerrissen ist', () => {
-    expect(run(['Beleg [', '1', '2] dazu.'])).toEqual({ text: 'Beleg  dazu.', markers: [12] });
+    expect(run(['Beleg [', '1', '2] dazu.'])).toEqual({ text: 'Beleg dazu.', markers: [12] });
   });
 
   it('erkennt einen Marker am Ende der Antwort', () => {
     // Hier greift flush(): der Strom endet direkt hinter dem Marker.
-    expect(run(['Der Beleg steht dort [7]'])).toEqual({ text: 'Der Beleg steht dort ', markers: [7] });
+    expect(run(['Der Beleg steht dort [7]'])).toEqual({ text: 'Der Beleg steht dort', markers: [7] });
   });
 
   it('gibt eine unvollstaendige Klammer am Ende wieder frei', () => {
@@ -70,16 +86,20 @@ describe('Marker-Erkennung im Antwortstrom', () => {
 
   it('erkennt mehrere Marker hintereinander', () => {
     expect(run(['Beides trifft zu [1][2] und auch [3].'])).toEqual({
-      text: 'Beides trifft zu  und auch .',
+      text: 'Beides trifft zu und auch.',
       markers: [1, 2, 3],
     });
+    // Zwei Marker hintereinander haengen an demselben Textstueck.
+    expect(withMarkerPositions(['Beides trifft zu [1][2] und auch [3].'])).toBe(
+      'Beides trifft zu<1><2> und auch<3>.',
+    );
   });
 
   it('erkennt mehrere Marker, wenn jedes Zeichen einzeln ankommt', () => {
     // Der haerteste Fall: Paketgroesse 1. Wenn das haelt, haelt jede
     // Paketgroesse dazwischen auch.
     const original = 'Erstens [1], zweitens [22], drittens [3]. Ende [4]';
-    const expected = 'Erstens , zweitens , drittens . Ende ';
+    const expected = 'Erstens, zweitens, drittens. Ende';
 
     expect(run(split(original, 1))).toEqual({ text: expected, markers: [1, 22, 3, 4] });
   });
@@ -98,7 +118,9 @@ describe('Marker-Erkennung im Antwortstrom', () => {
     // sonst blieben Woerter stehen, bis das Modell irgendwann fertig ist.
     const scrubber = new MarkerScrubber();
     const result = scrubber.push('Text mit [ Klammer und viel mehr Text dahinter.');
-    expect(result.text).toBe('Text mit [ Klammer und viel mehr Text dahinter.');
+    expect(result.segments.map((s) => s.text).join('')).toBe(
+      'Text mit [ Klammer und viel mehr Text dahinter.',
+    );
   });
 
   it('haelt eine vierstellige Zahl nicht faelschlich fuer einen Marker', () => {
@@ -112,7 +134,7 @@ describe('Marker-Erkennung im Antwortstrom', () => {
 
   it('kommt mit leeren Paketen zurecht', () => {
     expect(run(['Beleg [', '', '5', '', '] hier.'])).toEqual({
-      text: 'Beleg  hier.',
+      text: 'Beleg hier.',
       markers: [5],
     });
   });

@@ -28,10 +28,25 @@ function parseEvents(raw: string): { event: string; data: Record<string, unknown
   return events;
 }
 
-const answerTextOf = (events: ReturnType<typeof parseEvents>) =>
+interface WireSegment {
+  text: string;
+  markers: number[];
+}
+
+const segmentsOf = (events: ReturnType<typeof parseEvents>): WireSegment[] =>
   events
     .filter((e) => e.event === 'token')
-    .map((e) => String(e.data.text ?? ''))
+    .flatMap((e) => (e.data.segments as WireSegment[] | undefined) ?? []);
+
+const answerTextOf = (events: ReturnType<typeof parseEvents>) =>
+  segmentsOf(events)
+    .map((s) => s.text)
+    .join('');
+
+/** Baut den Text mit den Markern an ihrer Position wieder zusammen. */
+const withMarkerPositions = (events: ReturnType<typeof parseEvents>) =>
+  segmentsOf(events)
+    .map((s) => s.text + s.markers.map((m) => `<${m}>`).join(''))
     .join('');
 
 async function waitForReady(sourceId: string): Promise<void> {
@@ -111,8 +126,9 @@ describe('Chat mit Belegen', () => {
     expect((citations?.data.citations as unknown[]).length).toBeGreaterThan(0);
 
     // Der Marker ist aus dem Text verschwunden - die Oberflaeche setzt an
-    // seiner Stelle einen Chip.
-    expect(answerTextOf(events)).toBe('Sie steht im Zugriffspfad .');
+    // seiner Stelle einen Chip, und zwar an genau dieser Position.
+    expect(answerTextOf(events)).toBe('Sie steht im Zugriffspfad.');
+    expect(withMarkerPositions(events)).toBe('Sie steht im Zugriffspfad<1>.');
 
     const done = events.find((e) => e.event === 'done');
     expect(done).toBeDefined();
@@ -131,9 +147,12 @@ describe('Chat mit Belegen', () => {
       .set(auth(alice))
       .send({ question: 'Welcher Status?' });
 
-    const text = answerTextOf(parseEvents(res.text));
-    expect(text).toBe('Die Antwort ist 404  und nicht 403.');
-    expect(text).not.toContain('[');
+    const events = parseEvents(res.text);
+    expect(answerTextOf(events)).toBe('Die Antwort ist 404 und nicht 403.');
+    expect(answerTextOf(events)).not.toContain('[');
+    // Der Chip steht hinter der Aussage, die er belegt - auch wenn der Marker
+    // ueber zwei Pakete zerrissen ankam.
+    expect(withMarkerPositions(events)).toBe('Die Antwort ist 404<1> und nicht 403.');
   });
 
   it('speichert Frage, Antwort und nur die verwendeten Belege', async () => {

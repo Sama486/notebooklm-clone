@@ -14,7 +14,7 @@ import { getAiClient } from '../ai/index.js';
 import { AiError, type ChatMessage } from '../ai/types.js';
 import { rankBySimilarity } from './similarity.js';
 import { buildSystemPrompt, buildUserMessage, numberPassages } from './prompt.js';
-import { MarkerScrubber } from './markerScrubber.js';
+import { MarkerScrubber, type Segment } from './markerScrubber.js';
 
 export const chatRouter = Router();
 
@@ -157,28 +157,27 @@ chatRouter.post(
     let answer = '';
 
     try {
+      const emit = (segments: Segment[]) => {
+        if (segments.length === 0) return;
+        for (const segment of segments) {
+          answer += segment.text;
+          for (const marker of segment.markers) used.add(marker);
+        }
+        // Segmente statt Text plus Nummernliste: nur so weiss die Oberflaeche,
+        // hinter welcher Aussage ein Chip steht.
+        sendEvent(res, 'token', { segments });
+      };
+
       for await (const part of ai.streamChat({
         system: buildSystemPrompt(),
         messages,
         signal: controller.signal,
       })) {
-        const { text, markers } = scrubber.push(part);
-        for (const marker of markers) used.add(marker);
-        if (text) {
-          answer += text;
-          sendEvent(res, 'token', { text, markers });
-        } else if (markers.length > 0) {
-          sendEvent(res, 'token', { text: '', markers });
-        }
+        emit(scrubber.push(part).segments);
       }
 
       // Was zurueckgehalten wurde, war doch kein Marker.
-      const rest = scrubber.flush();
-      for (const marker of rest.markers) used.add(marker);
-      if (rest.text || rest.markers.length > 0) {
-        answer += rest.text;
-        sendEvent(res, 'token', { text: rest.text, markers: rest.markers });
-      }
+      emit(scrubber.flush().segments);
     } catch (error) {
       logger.error('Modellaufruf fehlgeschlagen', {
         notebookId: notebook.id,
