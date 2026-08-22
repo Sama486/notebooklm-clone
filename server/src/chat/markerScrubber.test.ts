@@ -95,6 +95,39 @@ describe('Marker-Erkennung im Antwortstrom', () => {
     );
   });
 
+  it('erkennt zusammengefasste Marker wie [2, 3]', () => {
+    // In der Oberflaeche aufgefallen: das Modell fasst Belege gelegentlich
+    // zusammen, obwohl der Prompt die Einzelform verlangt. Vorher blieb die
+    // Klammer als Text stehen und der zweite Beleg ging verloren.
+    expect(run(['Beides trifft zu [2, 3].'])).toEqual({
+      text: 'Beides trifft zu.',
+      markers: [2, 3],
+    });
+    expect(run(['Ohne Leerzeichen [2,3].'])).toEqual({
+      text: 'Ohne Leerzeichen.',
+      markers: [2, 3],
+    });
+    expect(run(['Gleich drei [1, 2, 3].'])).toEqual({ text: 'Gleich drei.', markers: [1, 2, 3] });
+
+    // Und die Chips stehen an derselben Stelle wie die Klammer.
+    expect(withMarkerPositions(['Aussage [2, 3] und weiter.'])).toBe('Aussage<2><3> und weiter.');
+  });
+
+  it('erkennt einen zusammengefassten Marker ueber Paketgrenzen hinweg', () => {
+    expect(run(['Beleg [2, ', '3] dazu.'])).toEqual({ text: 'Beleg dazu.', markers: [2, 3] });
+    expect(run(['Beleg [', '2', ', ', '3', '] dazu.'])).toEqual({
+      text: 'Beleg dazu.',
+      markers: [2, 3],
+    });
+  });
+
+  it('haelt eine Aufzaehlung in normalem Text nicht an', () => {
+    // Ziffern und Kommas in eckigen Klammern werden zurueckgehalten - aber nur
+    // bis klar ist, dass kein Marker daraus wird.
+    const text = 'Ein Feld a[i], eine Liste [abc, def] und viel Text dahinter.';
+    expect(run([text])).toEqual({ text, markers: [] });
+  });
+
   it('erkennt mehrere Marker, wenn jedes Zeichen einzeln ankommt', () => {
     // Der härteste Fall: Paketgrösse 1. Wenn das hält, hält jede
     // Paketgrösse dazwischen auch.

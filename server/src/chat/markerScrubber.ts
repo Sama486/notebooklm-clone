@@ -38,18 +38,32 @@ export interface ScrubResult {
 }
 
 /**
- * Längster Präfix eines vollständigen Markers, der noch kein Marker ist:
- * "[" plus bis zu drei Ziffern. Mehr als drei Ziffern kann ein Marker nicht
- * haben, weil nie mehr als eine zweistellige Zahl an Textstellen im Prompt
- * steht - die Grenze verhindert, dass eine öffnende Klammer in normalem Text
- * den Strom unbegrenzt anhält.
+ * Längster Präfix eines vollständigen Markers, der noch kein Marker ist.
+ *
+ * Muss auch eine zusammengefasste Form abdecken: Modelle schreiben Belege
+ * gelegentlich als "[2, 3]" statt "[2][3]". Bei höchstens acht Textstellen im
+ * Prompt ist "[1, 2, 3, 4, 5, 6, 7, 8]" der längste denkbare Fall - 24 Zeichen.
+ * Die Grenze verhindert, dass eine öffnende Klammer in normalem Text den Strom
+ * unbegrenzt anhält.
  */
-const MAX_HELD = 4;
+const MAX_HELD = 24;
 
 /** Wie viele Leerzeichen höchstens mit zurückgehalten werden. */
 const MAX_HELD_SPACES = 4;
 
-const COMPLETE_MARKER = /\[(\d{1,3})\]/g;
+/**
+ * Ein vollständiger Marker: eine Zahl oder mehrere durch Komma getrennte.
+ *
+ * Die zusammengefasste Form stand ursprünglich nicht drin, und das Ergebnis war
+ * in der Oberfläche zu sehen: aus "[2, 3]" wurden keine Chips, die Klammer
+ * blieb als Text stehen und Beleg 2 ging verloren. Der System-Prompt verlangt
+ * jetzt die Einzelform - aber ein Prompt ist eine Bitte, keine Zusicherung,
+ * deshalb wird die zusammengefasste Form hier trotzdem verstanden.
+ */
+const COMPLETE_MARKER = /\[(\d{1,3}(?:\s*,\s*\d{1,3})*)\]/g;
+
+/** Was noch zu einem angefangenen Marker werden kann: Ziffern, Komma, Leerraum. */
+const MOEGLICHER_MARKER_REST = /^[\d,\s]*$/;
 
 export class MarkerScrubber {
   /** Zurückgehaltener Rest, der noch Anfang eines Markers sein könnte. */
@@ -93,17 +107,22 @@ export class MarkerScrubber {
   private partialMarkerStart(buffer: string): number {
     const windowStart = Math.max(0, buffer.length - MAX_HELD);
 
-    for (let i = buffer.length - 1; i >= windowStart; i -= 1) {
-      if (buffer[i] !== '[') continue;
-      const tail = buffer.slice(i + 1);
-      // Etwas anderes als Ziffern dahinter: das wird kein Marker mehr.
-      if (!/^\d*$/.test(tail)) return buffer.length;
+    const letzteKlammer = buffer.lastIndexOf('[');
 
+    // Nur die LETZTE öffnende Klammer kann noch ein Marker werden. Frühere sind
+    // längst entschieden - und eine tote Klammer wie in "a[i]" darf die Prüfung
+    // nicht abbrechen, sonst bleibt das Leerzeichen am Pufferende unbehandelt.
+    // Genau daran ist das Vergrößern des Fensters zuerst gescheitert: eine
+    // Klammer zwanzig Zeichen vorher lag plötzlich mit im Fenster.
+    if (
+      letzteKlammer >= windowStart &&
+      MOEGLICHER_MARKER_REST.test(buffer.slice(letzteKlammer + 1))
+    ) {
       // Die Leerzeichen unmittelbar davor gehören mit ins Rückhaltefenster.
       // Sonst wären sie schon ausgeliefert, wenn sich der Marker als solcher
       // herausstellt - und die Lücke vor dem Chip ließe sich nicht mehr
       // schließen, weil das Leerzeichen in einem früheren Paket steckt.
-      return pullBackSpaces(buffer, i);
+      return pullBackSpaces(buffer, letzteKlammer);
     }
 
     // Kein angefangener Marker in Sicht. Trotzdem bleiben Leerzeichen am
@@ -152,13 +171,17 @@ function extractMarkers(text: string): ScrubResult {
 
   while ((match = COMPLETE_MARKER.exec(text)) !== null) {
     const before = text.slice(cursor, match.index).replace(/[ \t]+$/, '');
-    const marker = Number.parseInt(match[1] as string, 10);
+    // "[2, 3]" ergibt zwei Belege an derselben Stelle im Text.
+    const marker = (match[1] as string)
+      .split(',')
+      .map((teil) => Number.parseInt(teil.trim(), 10))
+      .filter((zahl) => Number.isInteger(zahl));
 
     const last = segments.at(-1);
     // Zwei Marker direkt hintereinander ("[1][2]") gehören an dasselbe
     // Textstück, nicht an ein leeres dazwischen.
-    if (before === '' && last) last.markers.push(marker);
-    else segments.push({ text: before, markers: [marker] });
+    if (before === '' && last) last.markers.push(...marker);
+    else segments.push({ text: before, markers: marker });
 
     cursor = match.index + match[0].length;
   }

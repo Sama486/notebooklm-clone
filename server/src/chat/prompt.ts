@@ -79,7 +79,8 @@ export function buildSystemPrompt(): string {
     '2. Antworte nur mit dem, was in den Textstellen steht. Ergänze nichts aus deinem eigenen Wissen.',
     '3. Steht die Antwort nicht in den Textstellen, sage genau das: dass die vorhandenen Quellen die Frage nicht beantworten. Rate nicht.',
     '4. Belege jede Aussage mit der Nummer der Textstelle in eckigen Klammern, zum Beispiel [1]. Setze den Marker direkt hinter die Aussage, die er belegt, nicht am Ende des Absatzes. Verwende nur Nummern, die es in den Textstellen wirklich gibt.',
-    '5. Antworte auf Deutsch, sachlich und knapp.',
+    '5. Jede Klammer enthaelt genau eine Nummer. Gehoeren mehrere Belege zu einer Aussage, schreibe sie einzeln hintereinander: [2][3] und nicht [2, 3].',
+    '6. Antworte auf Deutsch, sachlich und knapp.',
   ].join('\n');
 }
 

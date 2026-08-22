@@ -60,7 +60,8 @@ export function chunkText(text: string, pageBreaks: number[] = []): Chunk[] {
     // Bevorzugt an einer Absatzgrenze schneiden. Ein Abschnitt, der mitten im
     // Satz aufhört, verliert genau den Zusammenhang, den das Embedding
     // abbilden soll.
-    const end = hardEnd >= text.length ? text.length : bestBoundary(boundaries, cursor, hardEnd);
+    const end =
+      hardEnd >= text.length ? text.length : bestBoundary(text, boundaries, cursor, hardEnd);
 
     const content = text.slice(cursor, end);
     if (content.trim().length > 0) {
@@ -79,7 +80,10 @@ export function chunkText(text: string, pageBreaks: number[] = []): Chunk[] {
     // Überlappung: der nächste Abschnitt beginnt ein Stück vor dem Ende des
     // vorigen. Ohne sie fällt eine Aussage, die genau über der Schnittkante
     // liegt, bei der Suche durch beide Raster.
-    const next = Math.max(end - overlapChars, cursor + 1);
+    // Auch der Startpunkt des nächsten Abschnitts muss an einer Wortgrenze
+    // liegen - er ist eine reine Rechnung (Ende minus Überlappung) und landet
+    // sonst genauso mitten im Wort wie ein harter Schnitt.
+    const next = zurWortgrenze(text, Math.max(end - overlapChars, cursor + 1), cursor + 1);
     cursor = next;
   }
 
@@ -105,7 +109,12 @@ function paragraphBoundaries(text: string): number[] {
  * `start` - sonst entstünden Splitter statt Abschnitte. Findet sich keine,
  * wird hart bei `hardEnd` geschnitten.
  */
-function bestBoundary(boundaries: number[], start: number, hardEnd: number): number {
+function bestBoundary(
+  text: string,
+  boundaries: number[],
+  start: number,
+  hardEnd: number,
+): number {
   const earliest = start + Math.round(targetChars * 0.5);
   let best = -1;
 
@@ -114,7 +123,30 @@ function bestBoundary(boundaries: number[], start: number, hardEnd: number): num
     if (position > hardEnd) break;
     if (position >= earliest) best = position;
   }
-  return best === -1 ? hardEnd : best;
+  // Keine Satzgrenze in Reichweite: dann wenigstens an einer Wortgrenze.
+  return best === -1 ? zurWortgrenze(text, hardEnd, earliest) : best;
+}
+
+/**
+ * Schiebt eine Position rückwärts bis vor das laufende Wort.
+ *
+ * Ohne diesen Schritt fällt ein Schnitt mitten in ein Wort oder eine Zahl. Im
+ * Export eines Lebenslaufs war das zu sehen: ein Abschnitt begann mit "23", dem
+ * Rest der Jahreszahl 2023. Das ist nicht nur hässlich - der abgeschnittene
+ * Rest geht genauso ins Embedding, und die Hervorhebung im Dokument beginnt
+ * mitten im Wort.
+ *
+ * `mindestens` verhindert, dass ein sehr langes Wort ohne Leerzeichen (etwa
+ * eine lange Zahlenkolonne) den Schnitt beliebig weit nach vorn zieht. Ist
+ * keine Wortgrenze in Reichweite, bleibt es beim harten Schnitt.
+ */
+function zurWortgrenze(text: string, position: number, mindestens: number): number {
+  if (position <= mindestens || position >= text.length) return position;
+
+  let gefunden = position;
+  while (gefunden > mindestens && !/\s/.test(text[gefunden - 1] ?? '')) gefunden -= 1;
+
+  return gefunden > mindestens ? gefunden : position;
 }
 
 /** Seitenzahl (1-basiert) zur Zeichen-Position, oder `undefined` ohne Seiten. */

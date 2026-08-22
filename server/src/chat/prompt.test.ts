@@ -31,6 +31,9 @@ describe('Abwehr von Prompt Injection', () => {
     expect(system).toContain('Referenzmaterial');
     // Die Anweisung, Nichtwissen zuzugeben, ist der Kern von "nur aus den Quellen".
     expect(system).toContain('Rate nicht');
+    // Die Einzelform der Marker ausdruecklich verlangen - die zusammengefasste
+    // Form ist in der Oberflaeche aufgefallen.
+    expect(system).toContain('[2][3] und nicht [2, 3]');
   });
 
   it('ein Dokument kann seine eigene Textstelle nicht beenden', () => {
