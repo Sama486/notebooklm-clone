@@ -1,5 +1,6 @@
 import { limits } from '../config.js';
 import { badRequest, unprocessable } from '../http/errors.js';
+import { joinTextItems, type TextItem } from './joinTextItems.js';
 
 /**
  * Textextraktion aus einer PDF-Datei.
@@ -74,7 +75,10 @@ export async function extractPdf(data: Buffer): Promise<ExtractedPdf> {
       const page = await document.getPage(pageNumber);
       const content = await page.getTextContent();
 
-      const pageText = joinTextItems(content.items);
+      // `items` enthält neben Textstücken auch Struktur-Marken ohne `str`;
+      // joinTextItems überspringt sie, die Typen von pdfjs kennen den
+      // Unterschied aber nicht.
+      const pageText = joinTextItems(content.items as TextItem[]);
       parts.push(pageText);
       length += pageText.length;
 
@@ -104,29 +108,4 @@ export async function extractPdf(data: Buffer): Promise<ExtractedPdf> {
   }
 
   return { text, pageBreaks, pageCount: document.numPages };
-}
-
-/**
- * Setzt die Textstücke einer Seite zusammen.
- *
- * pdfjs liefert Textfragmente in Zeichenreihenfolge, nicht in Leserichtung, und
- * ohne Leerzeichen dazwischen. `hasEOL` markiert einen Zeilenumbruch. Ohne
- * diese Behandlung klebten Wörter über Zeilengrenzen hinweg aneinander -
- * "Berechtigungsprüfungsteht" statt "Berechtigungsprüfung steht" - und das
- * Embedding würde auf Wörtern arbeiten, die es nicht gibt.
- */
-function joinTextItems(items: unknown[]): string {
-  let text = '';
-
-  for (const item of items) {
-    const entry = item as { str?: string; hasEOL?: boolean };
-    if (typeof entry.str !== 'string') continue;
-
-    text += entry.str;
-    if (entry.hasEOL) text += '\n';
-    else if (entry.str.length > 0 && !entry.str.endsWith(' ')) text += ' ';
-  }
-
-  // Seitenende als Absatzgrenze: die Zerlegung schneidet bevorzugt dort.
-  return text.replace(/[ \t]+\n/g, '\n') + '\n\n';
 }
