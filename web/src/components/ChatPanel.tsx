@@ -74,7 +74,7 @@ export function ChatPanel({
       notebookTitle,
       messages.map((message) => ({
         role: message.role,
-        text: textVon(message),
+        segments: message.segments,
         citations: message.citations,
       })),
     );

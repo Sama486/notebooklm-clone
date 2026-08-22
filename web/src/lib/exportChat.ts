@@ -13,8 +13,24 @@ import type { Citation } from './types.js';
 
 export interface ExportMessage {
   role: 'user' | 'assistant';
-  text: string;
+  /**
+   * Textstücke mit den Markern, die dahinter standen - nicht der fertige Text.
+   *
+   * Der Unterschied war im Export zu sehen: die Oberfläche setzt an der Stelle
+   * eines Markers einen Chip, also ist er aus dem Text entfernt. Wer für den
+   * Export nur diesen Text nimmt, schreibt eine Antwort ohne jeden Marker und
+   * darunter eine Liste von Belegen, die zu nichts mehr gehören. Deshalb werden
+   * die Marker hier an ihrer Position wieder eingesetzt.
+   */
+  segments: { text: string; markers: number[] }[];
   citations: Citation[];
+}
+
+/** Setzt die Marker an ihrer Position wieder in den Text ein. */
+function textMitMarkern(message: ExportMessage): string {
+  return message.segments
+    .map((segment) => segment.text + segment.markers.map((marker) => `[${marker}]`).join(''))
+    .join('');
 }
 
 export function buildChatMarkdown(notebookTitle: string, messages: ExportMessage[]): string {
@@ -29,11 +45,11 @@ export function buildChatMarkdown(notebookTitle: string, messages: ExportMessage
 
   for (const message of messages) {
     if (message.role === 'user') {
-      zeilen.push(`## Frage`, '', message.text.trim(), '');
+      zeilen.push(`## Frage`, '', textMitMarkern(message).trim(), '');
       continue;
     }
 
-    zeilen.push('### Antwort', '', message.text.trim(), '');
+    zeilen.push('### Antwort', '', textMitMarkern(message).trim(), '');
 
     if (message.citations.length > 0) {
       zeilen.push('**Belege**', '');
