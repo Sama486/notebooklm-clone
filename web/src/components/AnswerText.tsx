@@ -1,5 +1,5 @@
 import { CitationChip } from './CitationChip.js';
-import type { Citation } from '../lib/types.js';
+import type { Citation, Message } from '../lib/types.js';
 
 /**
  * Zeigt eine Modellantwort und macht aus den Zitat-Markern anklickbare Chips.
@@ -49,15 +49,22 @@ export function AnswerText({ segments, citations, onCitationClick }: AnswerTextP
 }
 
 /**
- * Baut aus gespeichertem Antworttext und Belegen wieder Segmente.
+ * Liefert die Segmente einer gespeicherten Nachricht.
  *
- * Beim Streamen entstehen die Segmente Paket für Paket. Ein aus der Datenbank
- * geladener Verlauf hat sie nicht mehr - dort steht der fertige Text ohne
- * Marker. Die Chips kommen dann gesammelt ans Ende des Absatzes.
+ * Der Regelfall: der Server hat den gespeicherten Text zerlegt und schickt die
+ * Segmente mit - die Chips stehen dann wieder an ihrer Stelle.
+ *
+ * Der Rückfall gilt für Nachrichten aus der Zeit, in der die Antwort noch ohne
+ * ihre Marker gespeichert wurde. Dort ist die Position dauerhaft verloren; die
+ * Chips kommen gesammelt ans Ende. Besser als sie ganz wegzulassen - der Beleg
+ * gehört zur Antwort, auch wenn nicht mehr bekannt ist, zu welchem Satz.
  */
 export function segmentsFromStoredMessage(
-  content: string,
-  citations: Citation[] | null,
+  message: Pick<Message, 'content' | 'segments' | 'citations'>,
 ): { text: string; markers: number[] }[] {
-  return [{ text: content, markers: (citations ?? []).map((citation) => citation.marker) }];
+  if (message.segments && message.segments.length > 0) return message.segments;
+
+  return [
+    { text: message.content, markers: (message.citations ?? []).map((citation) => citation.marker) },
+  ];
 }

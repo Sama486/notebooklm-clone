@@ -14,7 +14,7 @@ import { getAiClient } from '../ai/index.js';
 import { AiError, type ChatMessage } from '../ai/types.js';
 import { rankBySimilarity } from './similarity.js';
 import { buildSystemPrompt, buildUserMessage, numberPassages } from './prompt.js';
-import { MarkerScrubber, type Segment } from './markerScrubber.js';
+import { MarkerScrubber, splitMarkers, type Segment } from './markerScrubber.js';
 
 export const chatRouter = Router();
 
@@ -49,14 +49,36 @@ chatRouter.get(
       req,
     );
 
-    const messages = await prisma.message.findMany({
+    const rows = await prisma.message.findMany({
       where: { notebookId: notebook.id },
       orderBy: { createdAt: 'desc' },
       take,
     });
 
-    // Absteigend geholt (die neuesten), aufsteigend ausgeliefert (Lesereihenfolge).
-    res.json({ messages: messages.reverse() });
+    /**
+     * Die Marker stecken im gespeicherten Text und werden hier wieder
+     * herausgelöst.
+     *
+     * Anfangs wurde die Antwort ohne Marker gespeichert und die Belege
+     * daneben. Damit war nach einem Neuladen nicht mehr bekannt, hinter
+     * welcher Aussage ein Beleg stand - alle Chips rutschten ans Ende. Die
+     * Position gehört zur Aussage, also gehört sie in den gespeicherten Text.
+     *
+     * Zerlegt wird auf dem Server, mit derselben Funktion wie beim Streamen:
+     * es soll genau eine Stelle geben, die versteht, was ein Marker ist.
+     */
+    const messages = rows.reverse().map((message) => {
+      const segments = splitMarkers(message.content);
+      return {
+        ...message,
+        // Der Text ohne Marker - für Kopieren, Notizen und alles, was den
+        // reinen Wortlaut braucht.
+        content: segments.map((segment) => segment.text).join(''),
+        segments,
+      };
+    });
+
+    res.json({ messages });
   }),
 );
 
@@ -155,12 +177,17 @@ chatRouter.post(
     const scrubber = new MarkerScrubber();
     const used = new Set<number>();
     let answer = '';
+    let gespeicherterText = '';
 
     try {
       const emit = (segments: Segment[]) => {
         if (segments.length === 0) return;
         for (const segment of segments) {
           answer += segment.text;
+          // Die Marker wandern normalisiert in den gespeicherten Text: "[2][3]"
+          // statt "[2, 3]". Beim Laden entsteht daraus wieder dieselbe
+          // Segmentfolge - und die Chips stehen wieder an ihrer Stelle.
+          gespeicherterText += segment.text + segment.markers.map((m) => `[${m}]`).join('');
           for (const marker of segment.markers) used.add(marker);
         }
         // Segmente statt Text plus Nummernliste: nur so weiß die Oberfläche,
@@ -209,7 +236,7 @@ chatRouter.post(
       data: {
         notebookId: notebook.id,
         role: 'assistant',
-        content: answer,
+        content: gespeicherterText,
         // Prisma verlangt für Json-Felder einen strukturellen JSON-Typ. Ein
         // benanntes Interface erfüllt dessen Index-Signatur nicht, obwohl der
         // Wert JSON-tauglich ist - deshalb hier die Umdeutung.

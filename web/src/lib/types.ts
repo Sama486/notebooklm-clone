@@ -52,7 +52,10 @@ export interface Citation {
 export interface Note {
   id: string;
   title: string;
+  /** Der reine Wortlaut, ohne die Marker. */
   content: string;
+  /** Wie bei einer Nachricht: Textstücke mit den Markern dahinter. */
+  segments?: { text: string; markers: number[] }[];
   citations: Citation[] | null;
   createdAt: string;
   updatedAt: string;
@@ -61,7 +64,16 @@ export interface Note {
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
+  /** Der reine Wortlaut, ohne die Marker. */
   content: string;
+  /**
+   * Textstücke mit den Markern, die dahinter standen.
+   *
+   * Kommt vom Server, der den gespeicherten Text mit derselben Funktion
+   * zerlegt wie beim Streamen. Dadurch stehen die Chips nach einem Neuladen
+   * wieder an ihrer Stelle statt gesammelt am Ende.
+   */
+  segments?: { text: string; markers: number[] }[];
   citations: Citation[] | null;
   createdAt: string;
 }

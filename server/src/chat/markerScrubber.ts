@@ -158,6 +158,18 @@ function pullBackSpaces(buffer: string, from: number): number {
  * "... Aussage [1]." - ohne diesen Schritt entstünde "... Aussage " gefolgt
  * vom Chip und einem einzeln stehenden Punkt.
  */
+/**
+ * Zerlegt einen fertigen Text an seinen Markern - ohne Strom, ohne Zustand.
+ *
+ * Wird beim Laden gespeicherter Nachrichten gebraucht: die Antwort liegt dort
+ * mitsamt ihren Markern in der Datenbank, und die Oberflaeche braucht daraus
+ * wieder Segmente. Dieselbe Zerlegung wie beim Streamen, damit es genau eine
+ * Stelle gibt, die versteht, was ein Marker ist.
+ */
+export function splitMarkers(text: string): Segment[] {
+  return extractMarkers(text).segments;
+}
+
 function extractMarkers(text: string): ScrubResult {
   if (!text.includes('[')) {
     return { segments: text ? [{ text, markers: [] }] : [] };

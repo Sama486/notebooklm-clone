@@ -67,6 +67,25 @@ describe('Notizen', () => {
       expect(res.body.note.citations[0]).toMatchObject({ marker: 1, charStart: 0, charEnd: 120 });
     });
 
+    it('behält die Position der Belege im Notiztext', async () => {
+      // Eine gesicherte Antwort bringt ihre Marker mit. Ohne Zerlegung stünde
+      // die Nummer als Text da und die Chips hingen gesammelt am Ende.
+      const res = await anlegen(alice, {
+        title: 'Gesicherte Antwort',
+        content: 'Die Antwort ist 404[1] und nicht 403.',
+        citations: [beleg],
+      });
+
+      expect(res.status).toBe(201);
+      // Der reine Wortlaut kommt ohne Marker.
+      expect(res.body.note.content).toBe('Die Antwort ist 404 und nicht 403.');
+
+      const mitMarkern = (res.body.note.segments as { text: string; markers: number[] }[])
+        .map((s) => s.text + s.markers.map((m) => `<${m}>`).join(''))
+        .join('');
+      expect(mitMarkern).toBe('Die Antwort ist 404<1> und nicht 403.');
+    });
+
     it('listet die neuesten zuerst', async () => {
       await anlegen(alice, { title: 'Erste', content: 'Inhalt' });
       await anlegen(alice, { title: 'Zweite', content: 'Inhalt' });

@@ -8,6 +8,7 @@ import { parseBody, parseParams, parseQuery, uuidParam } from '../http/validate.
 import { conflict, notFound } from '../http/errors.js';
 import { currentUserId } from '../auth/middleware.js';
 import { requireNotebook } from '../data/notebookAccess.js';
+import { splitMarkers } from '../chat/markerScrubber.js';
 
 /**
  * Notizen: gespeicherte Antworten und eigene Aufzeichnungen zu einem Notebook.
@@ -54,6 +55,23 @@ const citationSchema = z.object({
 
 const citationsSchema = z.array(citationSchema).max(limits.chat.topK).optional();
 
+/**
+ * Zerlegt den Notiztext an seinen Markern.
+ *
+ * Eine als Notiz gesicherte Antwort bringt ihre Marker mit. Sie hier zu
+ * zerlegen, statt den Text roh auszuliefern, hält die Belege an der Stelle, an
+ * der sie standen - dieselbe Behandlung wie beim Chatverlauf und dieselbe
+ * Funktion, damit es genau eine Stelle gibt, die Marker versteht.
+ */
+function mitSegmenten<T extends { content: string }>(note: T) {
+  const segments = splitMarkers(note.content);
+  return {
+    ...note,
+    content: segments.map((segment) => segment.text).join(''),
+    segments,
+  };
+}
+
 /** Nur diese Felder verlassen die Datenbank - `notebookId` bleibt drin. */
 const noteSelect = {
   id: true,
@@ -82,14 +100,14 @@ notesRouter.get(
       req,
     );
 
-    const notes = await prisma.note.findMany({
+    const rows = await prisma.note.findMany({
       where: { notebookId: notebook.id },
       orderBy: { createdAt: 'desc' },
       take,
       select: noteSelect,
     });
 
-    res.json({ notes });
+    res.json({ notes: rows.map(mitSegmenten) });
   }),
 );
 
@@ -124,7 +142,7 @@ notesRouter.post(
       select: noteSelect,
     });
 
-    res.status(201).json({ note });
+    res.status(201).json({ note: mitSegmenten(note) });
   }),
 );
 
@@ -156,7 +174,7 @@ notesRouter.patch(
       where: { id: noteId, notebookId },
       select: noteSelect,
     });
-    res.json({ note });
+    res.json({ note: mitSegmenten(note) });
   }),
 );
 

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { AnswerText } from './AnswerText.js';
+import { AnswerText, segmentsFromStoredMessage } from './AnswerText.js';
 import type { Citation, Note } from '../lib/types.js';
 
 /**
@@ -119,13 +119,11 @@ export function NotesPanel({
 
               <div className="mt-1.5 text-xs leading-relaxed text-slate-700">
                 {note.citations && note.citations.length > 0 ? (
-                  // Gespeicherte Antwort: die Chips hängen gesammelt hinten dran,
-                  // weil die Position der Marker im gespeicherten Text nicht mehr
-                  // steckt - dieselbe Behandlung wie beim geladenen Chatverlauf.
+                  // Eine gespeicherte Antwort behält ihre Belege an der Stelle,
+                  // an der sie standen - dieselbe Zerlegung wie beim Chatverlauf,
+                  // gerechnet auf dem Server.
                   <AnswerText
-                    segments={[
-                      { text: note.content, markers: note.citations.map((c) => c.marker) },
-                    ]}
+                    segments={segmentsFromStoredMessage(note)}
                     citations={note.citations}
                     onCitationClick={onCitationClick}
                   />

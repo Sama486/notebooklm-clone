@@ -62,7 +62,12 @@ export function ChatPanel({
   }
 
   async function alsNotizSpeichern(message: DisplayMessage) {
-    const text = textVon(message).trim();
+    // Mit den Markern speichern, damit die Notiz die Belege an ihrer Stelle
+    // behält - der Server zerlegt sie beim Laden wieder.
+    const text = message.segments
+      .map((segment) => segment.text + segment.markers.map((m) => `[${m}]`).join(''))
+      .join('')
+      .trim();
     // Die erste Zeile als Titel, gekürzt - der Nutzer kann sie danach ändern.
     const titel = (text.split('\n')[0] ?? 'Notiz').slice(0, 120) || 'Notiz';
     const erfolg = await onSaveNote(titel, text, message.citations);
@@ -95,7 +100,7 @@ export function ChatPanel({
           data.messages.map((message) => ({
             id: message.id,
             role: message.role,
-            segments: segmentsFromStoredMessage(message.content, message.citations),
+            segments: segmentsFromStoredMessage(message),
             citations: message.citations ?? [],
             streaming: false,
           })),

@@ -176,6 +176,57 @@ describe('Chat mit Belegen', () => {
     expect(messages[1]?.citations).toEqual([]);
   });
 
+  it('behält die Position der Belege über einen Neuladen hinweg', async () => {
+    // In der Oberfläche aufgefallen: nach dem Neuladen rutschten alle Chips ans
+    // Ende der Antwort. Die Antwort wurde ohne Marker gespeichert, damit war
+    // ihre Position dauerhaft verloren.
+    await addSource('Die Antwort ist 404 statt 403. '.repeat(40));
+    ai.setReply(['Die Antwort ist 404 [1] und nicht 403. Das gilt immer.']);
+
+    await request(app)
+      .post(`/api/notebooks/${notebookId}/chat`)
+      .set(auth(alice))
+      .send({ question: 'Welcher Status?' });
+
+    const verlauf = await request(app)
+      .get(`/api/notebooks/${notebookId}/messages`)
+      .set(auth(alice));
+    expect(verlauf.status).toBe(200);
+
+    const antwort = verlauf.body.messages.find((m: { role: string }) => m.role === 'assistant');
+
+    // Der Marker steht wieder an seiner Stelle, nicht am Ende.
+    const mitMarkern = (antwort.segments as WireSegment[])
+      .map((s) => s.text + s.markers.map((m) => `<${m}>`).join(''))
+      .join('');
+    expect(mitMarkern).toBe('Die Antwort ist 404<1> und nicht 403. Das gilt immer.');
+
+    // Und der reine Wortlaut kommt weiterhin ohne Marker.
+    expect(antwort.content).toBe('Die Antwort ist 404 und nicht 403. Das gilt immer.');
+  });
+
+  it('gibt auch mehrere Belege an ihrer jeweiligen Stelle zurück', async () => {
+    await addSource('Ein Absatz ueber Zustaendigkeit. '.repeat(40));
+    ai.setReply(['Erstens [1], zweitens [1] und drittens.']);
+
+    await request(app)
+      .post(`/api/notebooks/${notebookId}/chat`)
+      .set(auth(alice))
+      .send({ question: 'Frage?' });
+
+    const verlauf = await request(app)
+      .get(`/api/notebooks/${notebookId}/messages`)
+      .set(auth(alice));
+    const antwort = verlauf.body.messages.find((m: { role: string }) => m.role === 'assistant');
+
+    const mitMarkern = (antwort.segments as WireSegment[])
+      .map((s) => s.text + s.markers.map((m) => `<${m}>`).join(''))
+      .join('');
+    // Derselbe Beleg darf mehrfach vorkommen - eine Liste von Nummern haette
+    // das nicht abbilden koennen.
+    expect(mitMarkern).toBe('Erstens<1>, zweitens<1> und drittens.');
+  });
+
   it('Belege zeigen auf Stellen, die im Volltext der Quelle liegen', async () => {
     const content = 'Die Zeichen-Positionen tragen die Zitatfunktion. '.repeat(60);
     const sourceId = await addSource(content);
