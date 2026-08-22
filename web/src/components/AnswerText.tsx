@@ -62,7 +62,11 @@ export function AnswerText({ segments, citations, onCitationClick }: AnswerTextP
 export function segmentsFromStoredMessage(
   message: Pick<Message, 'content' | 'segments' | 'citations'>,
 ): { text: string; markers: number[] }[] {
-  if (message.segments && message.segments.length > 0) return message.segments;
+  // Nur verwenden, wenn dort auch Marker stecken. Bei einer Nachricht aus der
+  // Zeit vor dieser Speicherweise liefert der Server zwar Segmente, aber ohne
+  // Marker - dann gingen die Chips ganz verloren statt nur ihre Position.
+  const hatMarker = message.segments?.some((segment) => segment.markers.length > 0);
+  if (message.segments && hatMarker) return message.segments;
 
   return [
     { text: message.content, markers: (message.citations ?? []).map((citation) => citation.marker) },
