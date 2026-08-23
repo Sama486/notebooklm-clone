@@ -335,6 +335,14 @@ Der Verarbeitungsstatus einer Quelle steht in der **Datenbank**, nicht in einer 
 einen Neustart, und eine zweite Instanz sieht denselben Zustand. Der Embedding-Cache liegt aus
 demselben Grund in der Datenbank.
 
+**Benannte Annahme zum Embedding-Cache:** er hat weder Verfallszeit noch Aufräumlauf und wächst
+mit jedem je eingebetteten Abschnitt. Das ist für diesen Umfang bewusst so — ein Vektor mit 768
+Dimensionen kostet rund 6 kB, hunderttausend zwischengespeicherte Abschnitte also etwa 600 MB, und
+so weit kommt diese Installation nicht. Ab dort wäre der Schritt klein: ein Feld `lastUsedAt` und
+ein Löschlauf über alles, was länger als ein paar Monate niemand mehr gebraucht hat. Der Cache ist
+reine Kostenersparnis, keine Datenhaltung — ein verlorener Eintrag kostet einen Modellaufruf, sonst
+nichts.
+
 **Die Rate-Limit-Zähler** liegen im Prozessspeicher
 ([`http/rateLimit.ts`](server/src/http/rateLimit.ts)). Das stand zunächst als bewusste
 Vereinfachung mit der Annahme „eine Instanz" im Code — bis die Annahme gemessen wurde.

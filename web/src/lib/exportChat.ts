@@ -92,6 +92,9 @@ export function downloadMarkdown(inhalt: string, name: string): void {
   link.href = url;
   link.download = name;
   link.click();
-  // Ohne das bleibt der Blob bis zum Neuladen der Seite im Speicher.
-  URL.revokeObjectURL(url);
+  // Erst im nächsten Durchlauf freigeben. Ohne Freigabe bliebe der Blob bis
+  // zum Neuladen der Seite im Speicher - direkt nach dem Klick freigegeben
+  // sehen Firefox und Safari den Download dagegen gelegentlich als
+  // abgebrochen, weil sie die Adresse erst danach auflösen.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
