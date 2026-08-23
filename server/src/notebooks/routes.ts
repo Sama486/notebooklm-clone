@@ -6,6 +6,7 @@ import { asyncHandler } from '../http/asyncHandler.js';
 import { parseBody, parseParams, parseQuery, uuidParam } from '../http/validate.js';
 import { currentUserId } from '../auth/middleware.js';
 import { requireNotebook } from '../data/notebookAccess.js';
+import { notFound } from '../http/errors.js';
 
 export const notebooksRouter = Router();
 
@@ -126,9 +127,20 @@ notebooksRouter.patch(
     const { title } = parseBody(z.object({ title: titleSchema }), req);
 
     await requireNotebook(notebookId, userId);
-    const notebook = await prisma.notebook.update({
-      where: { id: notebookId },
+
+    // `updateMany` mit `userId` im where - dasselbe Muster wie bei Quellen und
+    // Notizen: auch der schreibende Zugriff trägt seine Bedingung selbst und
+    // verlässt sich nicht darauf, dass die Prüfung oben stehen bleibt. Die
+    // Zeile, die es anders macht, ist die, die beim nächsten Umbau vergessen
+    // wird.
+    const { count } = await prisma.notebook.updateMany({
+      where: { id: notebookId, userId },
       data: { title },
+    });
+    if (count === 0) throw notFound('Notebook nicht gefunden.');
+
+    const notebook = await prisma.notebook.findFirstOrThrow({
+      where: { id: notebookId, userId },
       select: { id: true, title: true, createdAt: true, updatedAt: true },
     });
     res.json({ notebook });
@@ -139,10 +151,15 @@ notebooksRouter.delete(
   '/:notebookId',
   asyncHandler(async (req, res) => {
     const { notebookId } = parseParams(idParams, req);
-    await requireNotebook(notebookId, currentUserId(req));
-    // Quellen, Abschnitte und Nachrichten hängen per onDelete: Cascade dran -
-    // die Datenbank räumt auf, nicht der Anwendungscode.
-    await prisma.notebook.delete({ where: { id: notebookId } });
+    const userId = currentUserId(req);
+    await requireNotebook(notebookId, userId);
+
+    // Wie beim Umbenennen trägt auch das Löschen seine Bedingung selbst.
+    // Quellen, Abschnitte, Nachrichten und Notizen hängen per onDelete: Cascade
+    // dran - die Datenbank räumt auf, nicht der Anwendungscode.
+    const { count } = await prisma.notebook.deleteMany({ where: { id: notebookId, userId } });
+    if (count === 0) throw notFound('Notebook nicht gefunden.');
+
     res.status(204).end();
   }),
 );
