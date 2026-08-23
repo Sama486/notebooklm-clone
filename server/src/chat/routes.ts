@@ -253,6 +253,17 @@ chatRouter.post(
  * Begrenzt, weil sonst jede weitere Frage den Prompt wächst lässt - bei
  * einem langen Gespräch wäre irgendwann mehr Verlauf als Textstelle im
  * Kontext, und die Kosten je Frage stiegen ohne Ende.
+ *
+ * OHNE DIE MARKER. Gespeicherte Antworten tragen ihre Belegnummern im Text,
+ * damit die Chips nach einem Neuladen wieder an ihrer Stelle stehen. Für den
+ * Prompt sind genau diese Nummern aber falsch: sie zeigten auf die Textstellen
+ * der DAMALIGEN Frage, und die aktuelle Anfrage nummeriert von vorn. Bleiben
+ * sie stehen, sieht das Modell im Verlauf ein Muster von "[3]" hinter Aussagen,
+ * die mit den jetzigen Textstellen nichts zu tun haben - und übernimmt die
+ * Nummer. Der Beleg zeigte dann auf eine beliebige andere Stelle.
+ *
+ * Zerlegt wird mit `splitMarkers`, derselben Funktion wie überall sonst; der
+ * reine Wortlaut bleibt erhalten, nur die Nummern fallen weg.
  */
 async function recentHistory(notebookId: string): Promise<ChatMessage[]> {
   const rows = await prisma.message.findMany({
@@ -262,7 +273,10 @@ async function recentHistory(notebookId: string): Promise<ChatMessage[]> {
     select: { role: true, content: true },
   });
 
-  return rows
-    .reverse()
-    .map((row) => ({ role: row.role === 'assistant' ? 'assistant' : 'user', content: row.content }));
+  return rows.reverse().map((row) => ({
+    role: row.role === 'assistant' ? 'assistant' : 'user',
+    content: splitMarkers(row.content)
+      .map((segment) => segment.text)
+      .join(''),
+  }));
 }

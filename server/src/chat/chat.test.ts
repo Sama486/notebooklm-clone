@@ -270,6 +270,42 @@ describe('Chat mit Belegen', () => {
     expect(ai.requests[0]?.messages.at(-1)?.content).not.toContain('Rhabarber');
   });
 
+  /**
+   * Gespeicherte Antworten tragen ihre Belegnummern im Text, damit die Chips
+   * nach einem Neuladen an ihrer Stelle stehen. Im Prompt der naechsten Frage
+   * waeren dieselben Nummern falsch: sie zeigten auf die Textstellen der
+   * damaligen Frage, und die neue Anfrage nummeriert von vorn.
+   */
+  it('gibt den Verlauf ohne die alten Belegnummern in den Prompt', async () => {
+    await addSource('Die Zustaendigkeit liegt bei der Behoerde. '.repeat(40));
+
+    ai.setReply(['Zustaendig ist die Behoerde [1].']);
+    await request(app)
+      .post(`/api/notebooks/${notebookId}/chat`)
+      .set(auth(alice))
+      .send({ question: 'Wer ist zustaendig?' });
+
+    // Die Antwort steht mit Marker in der Datenbank - sonst waeren die Chips
+    // nach einem Neuladen ihre Position los.
+    const gespeichert = await prisma.message.findFirstOrThrow({
+      where: { notebookId, role: 'assistant' },
+    });
+    expect(gespeichert.content).toContain('[1]');
+
+    ai.setReply(['Und weiter [1].']);
+    await request(app)
+      .post(`/api/notebooks/${notebookId}/chat`)
+      .set(auth(alice))
+      .send({ question: 'Und sonst?' });
+
+    // Im Prompt der zweiten Frage steht der Wortlaut, aber keine Nummer mehr.
+    const verlauf = ai.requests[1]?.messages.slice(0, -1) ?? [];
+    const alsText = verlauf.map((m) => m.content).join(' ');
+    expect(verlauf.length).toBeGreaterThan(0);
+    expect(alsText).toContain('Zustaendig ist die Behoerde');
+    expect(alsText).not.toContain('[1]');
+  });
+
   describe('Prompt Injection durch ein Dokument', () => {
     it('der Injektionsversuch bleibt innerhalb der Abgrenzung', async () => {
       // Ein hochgeladenes Dokument, das versucht, die Anweisungen zu kapern.
