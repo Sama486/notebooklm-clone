@@ -132,13 +132,7 @@ export const limits = {
     // Fenster in Millisekunden und erlaubte Anfragen darin.
     auth: { windowMs: 15 * 60_000, max: 10 },
     ingest: { windowMs: 60_000, max: 10 },
-    note: {
-    titleMax: 200,
-    contentMax: 20_000,
-    maxPerNotebook: 200,
-  },
-
-  chat: { windowMs: 60_000, max: 20 },
+    chat: { windowMs: 60_000, max: 20 },
     global: { windowMs: 60_000, max: 300 },
   },
 } as const;
