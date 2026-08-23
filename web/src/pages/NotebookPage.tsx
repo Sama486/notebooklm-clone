@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiRequest, ApiError } from '../lib/api.js';
 import { SourcesPanel } from '../components/SourcesPanel.js';
@@ -112,19 +112,13 @@ export function NotebookPage() {
    * ist. Ein dauerhaft laufender Zeitgeber würde die API sonst rund um die
    * Uhr belasten, obwohl es nichts zu holen gibt.
    */
-  const pollingRef = useRef(false);
   const busySources = sources.some((s) => s.status === 'pending' || s.status === 'processing');
 
   useEffect(() => {
-    if (!busySources || pollingRef.current) return;
+    if (!busySources) return;
 
-    pollingRef.current = true;
     const timer = setInterval(() => void loadSources(), POLL_INTERVAL_MS);
-
-    return () => {
-      clearInterval(timer);
-      pollingRef.current = false;
-    };
+    return () => clearInterval(timer);
   }, [busySources, loadSources]);
 
   function openCitation(next: Citation) {

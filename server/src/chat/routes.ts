@@ -176,14 +176,12 @@ chatRouter.post(
 
     const scrubber = new MarkerScrubber();
     const used = new Set<number>();
-    let answer = '';
     let gespeicherterText = '';
 
     try {
       const emit = (segments: Segment[]) => {
         if (segments.length === 0) return;
         for (const segment of segments) {
-          answer += segment.text;
           // Die Marker wandern normalisiert in den gespeicherten Text: "[2][3]"
           // statt "[2, 3]". Beim Laden entsteht daraus wieder dieselbe
           // Segmentfolge - und die Chips stehen wieder an ihrer Stelle.

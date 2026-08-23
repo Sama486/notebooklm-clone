@@ -148,17 +148,6 @@ function pullBackSpaces(buffer: string, from: number): number {
 }
 
 /**
- * Zerlegt ein entschiedenes Textstück an seinen Markern in Segmente.
- *
- * Der Marker selbst verschwindet aus dem Text: die Oberfläche setzt an seiner
- * Stelle einen anklickbaren Chip. Würde er stehen bleiben, stünde die Nummer
- * doppelt da - einmal als Text, einmal als Chip.
- *
- * Ein Leerzeichen unmittelbar vor dem Marker fällt weg. Das Modell schreibt
- * "... Aussage [1]." - ohne diesen Schritt entstünde "... Aussage " gefolgt
- * vom Chip und einem einzeln stehenden Punkt.
- */
-/**
  * Zerlegt einen fertigen Text an seinen Markern - ohne Strom, ohne Zustand.
  *
  * Wird beim Laden gespeicherter Nachrichten gebraucht: die Antwort liegt dort
@@ -170,6 +159,17 @@ export function splitMarkers(text: string): Segment[] {
   return extractMarkers(text).segments;
 }
 
+/**
+ * Zerlegt ein entschiedenes Textstück an seinen Markern in Segmente.
+ *
+ * Der Marker selbst verschwindet aus dem Text: die Oberfläche setzt an seiner
+ * Stelle einen anklickbaren Chip. Würde er stehen bleiben, stünde die Nummer
+ * doppelt da - einmal als Text, einmal als Chip.
+ *
+ * Ein Leerzeichen unmittelbar vor dem Marker fällt weg. Das Modell schreibt
+ * "... Aussage [1]." - ohne diesen Schritt entstünde "... Aussage " gefolgt
+ * vom Chip und einem einzeln stehenden Punkt.
+ */
 function extractMarkers(text: string): ScrubResult {
   if (!text.includes('[')) {
     return { segments: text ? [{ text, markers: [] }] : [] };
