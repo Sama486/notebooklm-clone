@@ -2,8 +2,9 @@ import { useRef, useState, type FormEvent } from 'react';
 import { apiRequest, ApiError, rawRequest } from '../lib/api.js';
 import type { Source } from '../lib/types.js';
 
-/** Muss zur Grenze in server/src/config.ts passen. */
+/** Müssen zu den Grenzen in server/src/config.ts passen. */
 const MAX_PDF_BYTES = 15 * 1024 * 1024;
+const MAX_TEXT_CHARS = 400_000;
 
 const STATUS_LABEL: Record<Source['status'], string> = {
   pending: 'wartet',
@@ -349,8 +350,15 @@ function TextForm({ notebookId, busy, run }: FormProps) {
         placeholder="Text einfügen"
         required
         rows={4}
+        // Wie bei der Dateigröße: die verbindliche Grenze steht auf dem Server,
+        // diese hier erspart dem Nutzer nur, erst beim Absenden davon zu
+        // erfahren. Muss zu limits.body.pastedText passen.
+        maxLength={MAX_TEXT_CHARS}
         className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-xs focus:border-sky-500 focus:outline-none"
       />
+      <p className="text-right text-[11px] text-slate-400">
+        {content.length.toLocaleString('de-DE')} / {MAX_TEXT_CHARS.toLocaleString('de-DE')} Zeichen
+      </p>
       <button
         type="submit"
         disabled={busy}

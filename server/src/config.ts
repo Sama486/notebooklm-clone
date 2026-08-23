@@ -44,10 +44,20 @@ export const limits = {
   },
 
   body: {
-    // Global klein. Nur der Upload-Endpunkt bekommt eine eigene, größere Grenze.
+    // Voreinstellung für jede Route, die kein Dokument entgegennimmt. Die
+    // beiden Routen, die eines entgegennehmen, bringen ihre eigene Grenze mit
+    // (sources/routes.ts) - eine großzügige Voreinstellung würde jeden
+    // JSON-Endpunkt zum Speicher-Ventil machen.
     json: '128kb',
     pdfUpload: 15 * 1024 * 1024,
     pastedText: 400_000, // Zeichen, entspricht grob einem 150-Seiten-Dokument
+    // Rumpfgrenze der Text-Quelle in BYTES; `pastedText` zählt ZEICHEN.
+    //
+    // Bewusst großzügiger als die Zeichengrenze mal vier (die Obergrenze eines
+    // UTF-8-Zeichens), damit im Fehlerfall die Zeichengrenze greift und nicht
+    // diese hier. Der Unterschied ist die Fehlermeldung: "höchstens 400.000
+    // Zeichen" sagt dem Nutzer, was er tun soll - "Anfrage zu groß" nicht.
+    pastedTextBody: 2 * 1024 * 1024,
   },
 
   source: {

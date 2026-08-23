@@ -50,24 +50,39 @@ export function createApp() {
     }),
   );
 
-  // Global klein gehalten. Der PDF-Upload bringt seine eigene, größere Grenze
-  // mit (sources/routes.ts) - eine großzügige globale Grenze würde jeden
-  // JSON-Endpunkt zum Speicher-Ventil machen.
-  app.use(express.json({ limit: limits.body.json }));
-
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', time: new Date().toISOString() });
   });
 
   app.use('/api', globalLimiter);
   app.use('/api', streamProbeRouter);
-  app.use('/api/auth', authRouter);
 
-  // `requireAuth` liegt auf dem Router, nicht auf einzelnen Routen: eine
-  // später hinzugefügte Route in diesen Dateien ist damit von sich aus
-  // geschützt, ohne dass jemand daran denken muss.
-  app.use('/api/notebooks', requireAuth, notebooksRouter);
+  /**
+   * Der Quellen-Router steht VOR dem allgemeinen JSON-Parser, und das ist kein
+   * Schönheitsfehler, sondern die Bedingung dafür, dass seine eigenen Grenzen
+   * überhaupt wirken.
+   *
+   * `express.json` merkt sich am Request, dass der Rumpf gelesen wurde, und
+   * jeder weitere Body-Parser steigt danach wortlos aus. Stand die kleine
+   * Grenze also zuerst in der Kette, hatte sie den Rumpf längst mit 413
+   * abgewiesen, bevor die größere Grenze der Text-Route zum Zug kam - die war
+   * damit toter Code, und "Text einfügen" brach bei 128 kb ab statt bei
+   * 400.000 Zeichen. Der Router bringt seine Parser deshalb je Route selbst
+   * mit (sources/routes.ts); alles, was er nicht beantwortet, fällt nach unten
+   * durch.
+   *
+   * `requireAuth` liegt auf dem Router, nicht auf einzelnen Routen: eine
+   * später hinzugefügte Route in diesen Dateien ist damit von sich aus
+   * geschützt, ohne dass jemand daran denken muss.
+   */
   app.use('/api/notebooks', requireAuth, sourcesRouter);
+
+  // Für alles Übrige: klein gehalten, damit kein JSON-Endpunkt zum
+  // Speicher-Ventil wird.
+  app.use(express.json({ limit: limits.body.json }));
+
+  app.use('/api/auth', authRouter);
+  app.use('/api/notebooks', requireAuth, notebooksRouter);
   app.use('/api/notebooks', requireAuth, chatRouter);
   app.use('/api/notebooks', requireAuth, notesRouter);
 

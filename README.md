@@ -298,7 +298,11 @@ Markierung, und der Angriffstext steht vollständig innerhalb davon.
 - **Zod an jeder Systemgrenze**, [`http/validate.ts`](server/src/http/validate.ts). Der Request-Body
   wird nie als Ganzes an Prisma gereicht: zurück kommt das von Zod erzeugte Objekt mit ausschließlich
   den deklarierten Feldern. Ein mitgeschicktes `id` oder `isAdmin` fällt weg — mit Test.
-- **Body-Grenzen global klein** (128 kb). Nur Upload und Text-Einfügen haben eigene, größere Grenzen.
+- **Body-Grenzen klein als Voreinstellung** (128 kb). Nur die beiden Routen, die ein Dokument
+  entgegennehmen, haben eigene, größere Grenzen: PDF-Upload und Text-Einfügen. Die Reihenfolge der
+  Parser trägt das — steht die kleine Grenze zuerst in der Kette, ist die größere toter Code, weil
+  `express.json` den Rumpf nur einmal liest. Begründet in [`app.ts`](server/src/app.ts), abgesichert
+  durch zwei Tests in [`sources/sources.test.ts`](server/src/sources/sources.test.ts).
 - **Rate-Limits** auf Anmeldung, Einlesen und Chat.
 - **Kein `dangerouslySetInnerHTML` im gesamten Frontend.** Die Hervorhebung der zitierten Stelle
   wird aus React-Elementen und Textknoten gebaut

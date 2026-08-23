@@ -26,6 +26,16 @@ const sourceParams = z.object({
 const titleSchema = z.string().trim().min(1).max(limits.source.titleMax);
 
 /**
+ * Der kleine JSON-Rumpf, wie ihn der Rest der Anwendung auch benutzt.
+ *
+ * Steht hier je Route statt einmal für die ganze Anwendung, weil dieser Router
+ * vor dem allgemeinen Parser hängt (app.ts). Der Preis ist eine Zeile je
+ * Route, der Gewinn ist, dass jede Route ausspricht, welchen Rumpf sie annimmt
+ * - Roh-PDF, großer Text oder eben der übliche kleine.
+ */
+const jsonBody = express.json({ limit: limits.body.json });
+
+/**
  * Legt eine Quelle an und startet die Verarbeitung.
  *
  * Gemeinsamer Abschluss aller drei Quellenarten: die Quelle wird mit dem
@@ -84,8 +94,8 @@ async function createSourceAndStart(input: {
  * ist damit von vornherein nur Anzeigetext: er berührt nie einen Pfad, weil
  * es keinen Pfad gibt. Es wird nichts ins Dateisystem geschrieben.
  *
- * `express.raw` mit eigener, größerer Grenze - die globale JSON-Grenze von
- * 128 kb gilt hier nicht, alle anderen Endpunkte behalten sie.
+ * `express.raw` mit eigener, größerer Grenze. Alle Routen, die kein Dokument
+ * entgegennehmen, behalten die kleine Voreinstellung.
  */
 sourcesRouter.post(
   '/:notebookId/sources/pdf',
@@ -139,8 +149,9 @@ function pdfBody(req: Request): Buffer {
 sourcesRouter.post(
   '/:notebookId/sources/text',
   ingestLimiter,
-  // Eigene Grenze: mehr als JSON sonst darf, weniger als ein PDF.
-  express.json({ limit: limits.body.pastedText * 2 }),
+  // Eigene Grenze: mehr als JSON sonst darf, weniger als ein PDF. Sie greift
+  // nur, weil dieser Router vor dem allgemeinen Parser steht - siehe app.ts.
+  express.json({ limit: limits.body.pastedTextBody }),
   asyncHandler(async (req, res) => {
     const { notebookId } = parseParams(notebookParams, req);
     await requireNotebook(notebookId, currentUserId(req));
@@ -172,6 +183,7 @@ sourcesRouter.post(
 sourcesRouter.post(
   '/:notebookId/sources/url',
   ingestLimiter,
+  jsonBody,
   asyncHandler(async (req, res) => {
     const { notebookId } = parseParams(notebookParams, req);
     await requireNotebook(notebookId, currentUserId(req));
@@ -288,6 +300,7 @@ sourcesRouter.get(
  */
 sourcesRouter.patch(
   '/:notebookId/sources/selection',
+  jsonBody,
   asyncHandler(async (req, res) => {
     const { notebookId } = parseParams(notebookParams, req);
     const notebook = await requireNotebook(notebookId, currentUserId(req));
@@ -304,6 +317,7 @@ sourcesRouter.patch(
 
 sourcesRouter.patch(
   '/:notebookId/sources/:sourceId',
+  jsonBody,
   asyncHandler(async (req, res) => {
     const { notebookId, sourceId } = parseParams(sourceParams, req);
     await requireSource(sourceId, notebookId, currentUserId(req));

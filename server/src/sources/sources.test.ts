@@ -3,6 +3,7 @@ import request from 'supertest';
 import type { Express } from 'express';
 import { createApp } from '../app.js';
 import { prisma } from '../db.js';
+import { limits } from '../config.js';
 import { setAiClient } from '../ai/index.js';
 import { createTestAiClient } from '../ai/testDouble.js';
 import { auth, createNotebook, createUser, resetDatabase, type TestUser } from '../test/helpers.js';
@@ -174,6 +175,43 @@ describe('Quellen einlesen', () => {
         .set(auth(alice))
         .send({ title: 'Leer', content: '   ' });
       expect(res.status).toBe(400);
+    });
+
+    /**
+     * Diese beiden Fälle stehen hier, weil die Grenze schon einmal still
+     * verschwunden war: der allgemeine JSON-Parser lief vor dem der Route, hat
+     * den Rumpf mit 128 kb abgewiesen und damit die größere Grenze zu totem
+     * Code gemacht. "Text einfügen" brach bei rund 128 kb ab, obwohl die
+     * Konfiguration 400.000 Zeichen versprach - und der Nutzer bekam ein
+     * nichtssagendes "Anfrage zu groß" statt eines Hinweises auf die
+     * Zeichenzahl. Ein Test an dieser Stelle ist billiger als die Erinnerung
+     * an die Reihenfolge in app.ts.
+     */
+    it('nimmt Text an, der über der allgemeinen Rumpfgrenze liegt', async () => {
+      // Deutlich über den 128 kb der Voreinstellung, deutlich unter der
+      // Zeichengrenze der Route.
+      const content = 'Ein Satz über die Zuständigkeit der Behörde. '.repeat(4_000);
+      expect(content.length).toBeGreaterThan(150_000);
+      expect(content.length).toBeLessThan(limits.body.pastedText);
+
+      const res = await request(app)
+        .post(`/api/notebooks/${notebookId}/sources/text`)
+        .set(auth(alice))
+        .send({ title: 'Langer Text', content });
+
+      expect(res.status).toBe(201);
+    });
+
+    it('weist Text über der Zeichengrenze mit einer Meldung ab, die sie benennt', async () => {
+      const res = await request(app)
+        .post(`/api/notebooks/${notebookId}/sources/text`)
+        .set(auth(alice))
+        .send({ title: 'Zu lang', content: 'x'.repeat(limits.body.pastedText + 1) });
+
+      // 400 aus der Zod-Prüfung, nicht 413 aus dem Body-Parser: die
+      // Zeichengrenze ist die verbindliche, die Bytegrenze liegt darüber.
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('validation_failed');
     });
   });
 
