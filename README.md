@@ -519,7 +519,8 @@ erklärbare Fehlermeldung statt eines Verbindungsabbruchs aus einer Zwischenschi
 | SSRF: Adressbereiche, IPv6-verpackte IPv4 | [`net/privateAddress.test.ts`](server/src/net/privateAddress.test.ts) |
 | Prompt Injection | [`chat/prompt.test.ts`](server/src/chat/prompt.test.ts) |
 | Marker-Erkennung im Stream | [`chat/markerScrubber.test.ts`](server/src/chat/markerScrubber.test.ts) |
-| Zerlegung mit Zeichen-Positionen | [`ingest/chunk.test.ts`](server/src/ingest/chunk.test.ts) |
+| Zerlegung mit Zeichen-Positionen, Satzerkennung | [`ingest/chunk.test.ts`](server/src/ingest/chunk.test.ts) |
+| Beleg-Ausschnitt ohne Schnitt im Wort | [`chat/snippet.test.ts`](server/src/chat/snippet.test.ts) |
 | Ähnlichkeitsberechnung | [`chat/similarity.test.ts`](server/src/chat/similarity.test.ts) |
 | Einlesen, Fehlerpfade, Wiederholbarkeit | [`sources/sources.test.ts`](server/src/sources/sources.test.ts) |
 | PDF- und HTML-Extraktion | [`sources/extractPdf.test.ts`](server/src/sources/extractPdf.test.ts), [`sources/extractHtml.test.ts`](server/src/sources/extractHtml.test.ts) |
@@ -600,6 +601,31 @@ auf Seite 1. Gemessen an demselben PDF:
 
 Ein Test hält die Eigenschaft fest: kein Abschnitt darf mehr als ein Viertel eines längeren
 Dokuments abdecken ([`ingest/chunk.test.ts`](server/src/ingest/chunk.test.ts)).
+
+**Warum Abschnitte an Satzgrenzen beginnen und nicht nur dort enden.** Das Ende eines Abschnitts lag
+immer auf einer Absatz- oder Satzgrenze; sein Anfang war eine Rechnung — Ende minus Überlappung, auf
+die nächste Wortgrenze gerückt. Damit begann jeder Abschnitt ab dem zweiten mitten im Satz. Für die
+Suche ist das folgenlos, für den Beleg nicht: der Abschnitt hat zwei Aufgaben, Suchmaterial und
+Nachweis, und als Nachweis liest sich „zu begleiten, ist für mich kein Neuland" wie ein Fehler.
+Sichtbar wurde es erst im Markdown-Export, wo der Ausschnitt der ganze Beleg ist und kein Klick ins
+Dokument daneben liegt.
+
+Jetzt bedienen beide Enden dieselbe Liste von Satzgrenzen
+([`ingest/chunk.ts`](server/src/ingest/chunk.ts)). Zwei Entscheidungen dabei:
+
+- **Rückwärts überlappen, nicht vorwärts.** Vorwärts zum nächsten Satzanfang würde die Überlappung
+  verkleinern oder aufbrauchen — und die existiert, damit eine Aussage auf der Schnittkante nicht
+  durch beide Raster fällt. Rückwärts vergrößert sie um höchstens einen Satz.
+- **Die Satzerkennung ist eine Heuristik, keine Grammatik.** Ein Punkt endet keinen Satz nach einer
+  Ordnungszahl („12. August"), nach einem einzelnen Buchstaben („z. B."), nach einer kurzen Liste
+  deutscher Abkürzungen, ohne folgenden Leerraum („web.de") oder vor einem Kleinbuchstaben. Diese
+  fünf Regeln decken ab, was in Bewerbungen, Berichten und Fachtexten vorkommt; jede hat einen Test.
+
+Die Vorschau am Beleg entsteht getrennt davon ([`chat/snippet.ts`](server/src/chat/snippet.ts)). Der
+Abschnitt selbst bleibt unangetastet — `content`, `charStart` und `charEnd` müssen zeichengenau
+bleiben, sonst zeigt die Hervorhebung im Dokument auf die falsche Stelle. Gekürzt wird am letzten
+Satzende innerhalb der Grenze, ersatzweise an einer Wortgrenze mit Auslassungszeichen. Vorher stand
+dort ein `slice(0, 300)`, das mitten im Wort endete.
 
 **Warum Notizen und nicht Audio-Zusammenfassung.** Von den Funktionen, die NotebookLM sonst noch
 hat, wurde bewusst die langweiligste gebaut. Notizen brauchen keinen Modellaufruf, keine ausgehende
