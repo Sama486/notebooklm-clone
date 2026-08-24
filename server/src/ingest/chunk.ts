@@ -11,6 +11,15 @@ import { limits } from '../config.js';
  * Abschnitt erfüllt `text.slice(charStart, charEnd) === content`. Genau das
  * prüft der Test.
  *
+ * Geschnitten wird an Satzgrenzen, und zwar an beiden Enden. Das Ende war
+ * schon immer so; der Anfang war lange eine reine Rechnung (Ende minus
+ * Überlappung), nur auf die nächste Wortgrenze gerückt. Damit begann jeder
+ * Abschnitt ab dem zweiten mitten im Satz. Für die Suche ist das folgenlos,
+ * für den Beleg nicht: der Ausschnitt ist das, was der Nutzer als Nachweis
+ * liest, und einer, der mit "zu begleiten, ist für mich" anfängt, wirkt wie
+ * ein Fehler. Deshalb ist die kleinste Einheit hier der Satz, nicht das
+ * Zeichen.
+ *
  * Reine Funktion, kein Netz, keine Datenbank - deshalb billig zu testen.
  */
 
@@ -51,17 +60,13 @@ const minChars = Math.round(limits.chunking.minTokens * CHARS_PER_TOKEN);
 export function chunkText(text: string, pageBreaks: number[] = []): Chunk[] {
   if (text.trim().length === 0) return [];
 
-  const boundaries = paragraphBoundaries(text);
+  const grenzen = satzgrenzen(text);
   const chunks: Chunk[] = [];
   let cursor = 0;
 
   while (cursor < text.length) {
     const hardEnd = Math.min(cursor + targetChars, text.length);
-    // Bevorzugt an einer Absatzgrenze schneiden. Ein Abschnitt, der mitten im
-    // Satz aufhört, verliert genau den Zusammenhang, den das Embedding
-    // abbilden soll.
-    const end =
-      hardEnd >= text.length ? text.length : bestBoundary(text, boundaries, cursor, hardEnd);
+    const end = hardEnd >= text.length ? text.length : satzendeVor(text, grenzen, cursor, hardEnd);
 
     const content = text.slice(cursor, end);
     if (content.trim().length > 0) {
@@ -77,54 +82,123 @@ export function chunkText(text: string, pageBreaks: number[] = []): Chunk[] {
 
     if (end >= text.length) break;
 
-    // Überlappung: der nächste Abschnitt beginnt ein Stück vor dem Ende des
-    // vorigen. Ohne sie fällt eine Aussage, die genau über der Schnittkante
-    // liegt, bei der Suche durch beide Raster.
-    // Auch der Startpunkt des nächsten Abschnitts muss an einer Wortgrenze
-    // liegen - er ist eine reine Rechnung (Ende minus Überlappung) und landet
-    // sonst genauso mitten im Wort wie ein harter Schnitt.
-    const next = zurWortgrenze(text, Math.max(end - overlapChars, cursor + 1), cursor + 1);
-    cursor = next;
+    cursor = naechsterAnfang(text, grenzen, cursor, end);
   }
 
   return mergeTinyTail(chunks, text);
 }
 
-/** Positionen hinter Absatz- und danach Satzgrenzen, aufsteigend. */
-function paragraphBoundaries(text: string): number[] {
-  const positions = new Set<number>();
+/**
+ * Positionen, an denen ein neuer Satz beginnt - aufsteigend, ohne Duplikate.
+ *
+ * Dieselbe Liste bedient beide Enden: das Ende eines Abschnitts ist die
+ * grösste dieser Positionen, die noch ins Fenster passt, sein Anfang die
+ * grösste, die die geforderte Überlappung noch einhält. Weil beide auf
+ * derselben Liste arbeiten, kann kein Abschnitt mitten im Satz beginnen oder
+ * aufhören.
+ *
+ * Exportiert, weil hier die Heuristik sitzt, die schiefgehen kann: über
+ * `chunkText` liesse sie sich nur mit seitenlangen Texten prüfen, direkt mit
+ * einem Einzeiler je Fall.
+ */
+export function satzgrenzen(text: string): number[] {
+  const positionen = new Set<number>();
 
   for (const match of text.matchAll(/\n[ \t]*\n/g)) {
-    positions.add(match.index + match[0].length);
+    const position = match.index + match[0].length;
+    if (position < text.length) positionen.add(position);
   }
-  // Satzenden als zweite Wahl, wenn ein Absatz länger ist als ein Abschnitt.
-  for (const match of text.matchAll(/[.!?:]["')\]]?\s+/g)) {
-    positions.add(match.index + match[0].length);
+
+  // Das Wort vor dem Satzzeichen, dahinter ein optionales schliessendes
+  // Anführungs- oder Klammerzeichen, dann Leerraum. Ohne den geforderten
+  // Leerraum wäre der Punkt in "web.de" ein Satzende.
+  for (const match of text.matchAll(/([^\s.!?:]*)([.!?:])["’»')\]]?\s+/g)) {
+    const position = match.index + match[0].length;
+    if (position >= text.length) continue;
+    if (!istSatzende(match[1] ?? '', match[2] ?? '', text[position] ?? '')) continue;
+    positionen.add(position);
   }
-  return [...positions].sort((a, b) => a - b);
+
+  return [...positionen].sort((a, b) => a - b);
 }
 
 /**
- * Größte Grenze, die noch vor `hardEnd` liegt und nicht zu dicht hinter
- * `start` - sonst entstünden Splitter statt Abschnitte. Findet sich keine,
- * wird hart bei `hardEnd` geschnitten.
+ * Abkürzungen, nach denen ein Punkt kein Satzende ist.
+ *
+ * Bewusst kurz und deutschsprachig statt vollständig: die Liste fängt die
+ * Fälle ab, die in Bewerbungen, Berichten und Fachtexten wirklich vorkommen.
+ * Was sie nicht kennt, fängt in aller Regel die Prüfung darunter ab - im
+ * Deutschen beginnt ein Satz gross, eine Fortsetzung nach einer Abkürzung
+ * klein.
  */
-function bestBoundary(
-  text: string,
-  boundaries: number[],
-  start: number,
-  hardEnd: number,
-): number {
+const ABKUERZUNGEN = new Set([
+  'abb', 'abs', 'art', 'bspw', 'bzw', 'ca', 'dr', 'etc', 'evtl', 'ff', 'ggf', 'inkl', 'kap',
+  'max', 'min', 'mio', 'mrd', 'nr', 'prof', 'sog', 'str', 'tel', 'usw', 'vgl', 'zzgl',
+]);
+
+/**
+ * Ob an dieser Stelle wirklich ein Satz endet.
+ *
+ * Ohne diese Prüfung zerfällt "12. August 2026" in zwei Sätze und "z. B." in
+ * drei. Das wäre nicht nur hässlich: aus solchen Splittern entstehen echte
+ * Abschnittsgrenzen, und ein Beleg, der mit "August 2026 Bewerbung als"
+ * beginnt, ist genauso unbrauchbar wie ein Schnitt mitten im Wort.
+ */
+function istSatzende(wort: string, zeichen: string, folgezeichen: string): boolean {
+  // Ein Kleinbuchstabe danach ist im Deutschen kein Satzanfang.
+  if (/[a-zäöüß]/.test(folgezeichen)) return false;
+  if (zeichen !== '.') return true;
+  if (/^\d+$/.test(wort)) return false; // Ordnungszahl: "12. August"
+  if (wort.length <= 1) return false; // Initial oder der erste Teil von "z. B."
+
+  return !ABKUERZUNGEN.has(wort.toLowerCase());
+}
+
+/**
+ * Grösste Satzgrenze, die noch vor `hardEnd` liegt und nicht zu dicht hinter
+ * `start` - sonst entstünden Splitter statt Abschnitte. Findet sich keine, ist
+ * der Satz länger als ein ganzer Abschnitt; dann wird an einer Wortgrenze
+ * geschnitten, weil es keine bessere Möglichkeit gibt.
+ */
+function satzendeVor(text: string, grenzen: number[], start: number, hardEnd: number): number {
   const earliest = start + Math.round(targetChars * 0.5);
   let best = -1;
 
-  // Aufsteigend sortiert: die letzte passende Grenze ist die größte.
-  for (const position of boundaries) {
+  // Aufsteigend sortiert: die letzte passende Grenze ist die grösste.
+  for (const position of grenzen) {
     if (position > hardEnd) break;
     if (position >= earliest) best = position;
   }
-  // Keine Satzgrenze in Reichweite: dann wenigstens an einer Wortgrenze.
+
   return best === -1 ? zurWortgrenze(text, hardEnd, earliest) : best;
+}
+
+/**
+ * Anfang des nächsten Abschnitts: die grösste Satzgrenze, die die geforderte
+ * Überlappung noch einhält.
+ *
+ * Rückwärts statt vorwärts, und das ist der Punkt: vorwärts zum nächsten
+ * Satzanfang würde die Überlappung verkleinern oder ganz aufbrauchen - und die
+ * existiert, damit eine Aussage, die genau über der Schnittkante liegt, nicht
+ * durch beide Raster fällt. Rückwärts vergrössert sie um höchstens einen Satz.
+ *
+ * Der Rückgabewert liegt immer echt zwischen `cursor` und `end`: echt über
+ * `cursor`, sonst liefe die Schleife ewig, und echt unter `end`, sonst gäbe es
+ * keine Überlappung.
+ */
+function naechsterAnfang(text: string, grenzen: number[], cursor: number, end: number): number {
+  const ziel = end - overlapChars;
+  let best = -1;
+
+  for (const position of grenzen) {
+    if (position > ziel) break;
+    if (position > cursor) best = position;
+  }
+  if (best !== -1) return best;
+
+  // Kein Satzanfang in Reichweite - etwa in einem Text ganz ohne Satzzeichen.
+  // Dann wenigstens eine Wortgrenze, wie vor der Umstellung.
+  return zurWortgrenze(text, Math.max(ziel, cursor + 1), cursor + 1);
 }
 
 /**

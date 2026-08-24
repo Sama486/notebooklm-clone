@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { limits } from '../config.js';
-import { chunkText, estimateTokens } from './chunk.js';
+import { chunkText, estimateTokens, satzgrenzen } from './chunk.js';
 
 /** Erzeugt einen Text aus nummerierten Absätzen. */
 function buildText(paragraphs: number, sentencesEach = 6): string {
@@ -130,6 +130,77 @@ describe('Zerlegung mit Zeichen-Positionen', () => {
     for (const chunk of chunkText(text)) {
       expect(text.slice(chunk.charStart, chunk.charEnd)).toBe(chunk.content);
     }
+  });
+});
+
+describe('Abschnitte an Satzgrenzen', () => {
+  it('kein Abschnitt beginnt oder endet mitten im Satz', () => {
+    // Der Grund für die ganze Umstellung. Der Abschnitt ist das, was als Beleg
+    // angezeigt wird - beginnt er mitten im Satz, liest sich der Nachweis wie
+    // ein Fehler. Jeder Satz in `buildText` fängt mit "Absatz" an und hört mit
+    // einem Punkt auf; genau das muss für jeden Abschnitt gelten.
+    const chunks = chunkText(buildText(30));
+    expect(chunks.length).toBeGreaterThan(1);
+
+    for (const chunk of chunks) {
+      expect(chunk.content.trimStart().startsWith('Absatz')).toBe(true);
+      expect(chunk.content.trimEnd().endsWith('.')).toBe(true);
+    }
+  });
+
+  it('schneidet auch ohne Absätze an Satzgrenzen', () => {
+    // Ein einziger langer Absatz: dann trägt allein die Satzerkennung.
+    const satz = 'Die Berechtigungsprüfung liegt im Zugriffspfad und nicht daneben. ';
+    const chunks = chunkText(satz.repeat(200));
+
+    for (const chunk of chunks) {
+      expect(chunk.content.trimStart().startsWith('Die')).toBe(true);
+    }
+  });
+});
+
+describe('Satzerkennung', () => {
+  /** Der Text ab jeder erkannten Grenze - so liest sich der Test wie das Ergebnis. */
+  function satzanfaenge(text: string): string[] {
+    return satzgrenzen(text).map((position) => text.slice(position));
+  }
+
+  it('erkennt gewöhnliche Satzenden', () => {
+    expect(satzanfaenge('Er kam an. Sie ging fort.')).toEqual(['Sie ging fort.']);
+    expect(satzanfaenge('Wirklich? Ja! Genau.')).toEqual(['Ja! Genau.', 'Genau.']);
+  });
+
+  it('trennt nicht an einer Ordnungszahl', () => {
+    // "12. August" wäre sonst der Anfang eines neuen Abschnitts - und ein
+    // Beleg, der mit "August 2026 Bewerbung als" beginnt, ist unbrauchbar.
+    expect(satzanfaenge('Am 12. August 2026 kam Post. Sie lag im Fach.')).toEqual([
+      'Sie lag im Fach.',
+    ]);
+  });
+
+  it('trennt nicht an Abkürzungen', () => {
+    expect(satzanfaenge('Wir nutzen z. B. Node. Das genügt.')).toEqual(['Das genügt.']);
+    expect(satzanfaenge('Siehe Abs. 3 und Nr. 4 des Vertrags. Danach folgt mehr.')).toEqual([
+      'Danach folgt mehr.',
+    ]);
+    expect(satzanfaenge('Tests, Doku usw. und dann der Rest. Fertig ist es.')).toEqual([
+      'Fertig ist es.',
+    ]);
+  });
+
+  it('trennt nicht ohne Leerraum hinter dem Punkt', () => {
+    // Sonst zerfiele jede Adresse in zwei Sätze.
+    expect(satzanfaenge('Schreib an k.benziane@web.de Frankfurt gilt weiter.')).toEqual([]);
+  });
+
+  it('meldet keine Grenze am Textende', () => {
+    // Eine Grenze auf `text.length` wäre ein leerer Abschnitt.
+    expect(satzgrenzen('Ein Satz. ')).toEqual([]);
+    expect(satzgrenzen('Ein Absatz.\n\n')).toEqual([]);
+  });
+
+  it('erkennt den Absatzumbruch als Grenze', () => {
+    expect(satzanfaenge('Ohne Punkt am Ende\n\nNeuer Absatz.')).toEqual(['Neuer Absatz.']);
   });
 });
 
