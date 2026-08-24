@@ -154,10 +154,21 @@ export function NotebookPage() {
         <h1 className="truncate text-sm font-semibold text-slate-900">{notebook?.title ?? ''}</h1>
       </header>
 
-      {/* Drei Spalten ab großen Bildschirmen; darunter untereinander, damit
-          die Ansicht auf dem Telefon wenigstens benutzbar bleibt. */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)_22rem]">
-        <div className="min-h-0 border-b border-slate-200 lg:border-b-0">
+      {/*
+        Drei Spalten ab großen Bildschirmen, darunter untereinander.
+
+        Der Unterschied steckt darin, WER scrollt. Ab `lg` ist die Seite so hoch
+        wie das Fenster und jede Spalte scrollt für sich - so soll es am
+        Schreibtisch sein. Gestapelt geht das nicht auf: drei Bereiche teilen
+        sich dieselbe Fensterhöhe, jeder bekommt ein Drittel, und in ein Drittel
+        passt das Quellen-Formular nicht mehr hinein. Der "Hinzufügen"-Knopf
+        verschwand dabei hinter dem Chat und war nicht mehr anklickbar.
+
+        Deshalb gilt gestapelt die umgekehrte Regel: die SEITE scrollt, jeder
+        Bereich bekommt eine Mindesthöhe und darf so hoch werden, wie er muss.
+      */}
+      <div className="grid flex-1 grid-cols-1 overflow-y-auto lg:min-h-0 lg:grid-cols-[18rem_minmax(0,1fr)_22rem] lg:overflow-hidden">
+        <div className="min-h-[32rem] border-b border-slate-200 lg:min-h-0 lg:border-b-0">
           <SourcesPanel
             notebookId={notebookId}
             sources={sources}
@@ -170,7 +181,7 @@ export function NotebookPage() {
           />
         </div>
 
-        <div className="min-h-0">
+        <div className="min-h-[32rem] lg:min-h-0">
           <ChatPanel
             notebookId={notebookId}
             notebookTitle={notebook?.title ?? 'Notebook'}
@@ -180,7 +191,7 @@ export function NotebookPage() {
           />
         </div>
 
-        <div className="flex min-h-0 flex-col border-l border-slate-200 bg-white">
+        <div className="flex min-h-[32rem] flex-col border-l border-slate-200 bg-white lg:min-h-0">
           <div className="flex gap-1 border-b border-slate-200 px-3 py-2">
             {(['dokument', 'notizen'] as const).map((bereich) => (
               <button
