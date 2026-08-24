@@ -50,7 +50,9 @@ const citationSchema = z.object({
   charStart: z.number().int().min(0),
   charEnd: z.number().int().min(0),
   page: z.number().int().min(1).nullable(),
-  snippet: z.string().max(limits.chat.snippetChars),
+  // Ein Zeichen mehr als die Vorschaugrenze: ein mitten im Satz gekürzter
+  // Ausschnitt trägt ein angehängtes Auslassungszeichen (siehe chat/snippet.ts).
+  snippet: z.string().max(limits.chat.snippetChars + 1),
 });
 
 const citationsSchema = z.array(citationSchema).max(limits.chat.topK).optional();

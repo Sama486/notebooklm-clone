@@ -15,6 +15,7 @@ import { AiError, type ChatMessage } from '../ai/types.js';
 import { rankBySimilarity } from './similarity.js';
 import { buildSystemPrompt, buildUserMessage, numberPassages } from './prompt.js';
 import { MarkerScrubber, splitMarkers, type Segment } from './markerScrubber.js';
+import { belegAusschnitt } from './snippet.js';
 
 export const chatRouter = Router();
 
@@ -149,7 +150,7 @@ chatRouter.post(
       charStart: chunk.charStart,
       charEnd: chunk.charEnd,
       page: chunk.page,
-      snippet: chunk.content.slice(0, limits.chat.snippetChars),
+      snippet: belegAusschnitt(chunk.content),
     }));
 
     // 3. Prompt bauen. Die Injection-Abgrenzung steckt in prompt.ts.
