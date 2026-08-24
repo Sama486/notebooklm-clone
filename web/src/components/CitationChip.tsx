@@ -1,11 +1,28 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Citation } from '../lib/types.js';
+
+/** Breite der Vorschau. Wird auch gerechnet, deshalb eine Zahl statt einer Klasse. */
+const VORSCHAU_BREITE = 288;
 
 /**
  * Geschätzte Höhe der Vorschau. Genügt, um zu entscheiden, ob sie über oder
  * unter den Chip gehört - auf den Pixel genau muss das nicht sein.
  */
 const VORSCHAU_HOEHE = 190;
+
+/** Luft zwischen Chip und Vorschau. */
+const ABSTAND = 6;
+
+/** Mindestabstand zum Fensterrand. */
+const RAND = 8;
+
+type Vorschauposition = {
+  links: number;
+  /** Abstand zum oberen bzw. unteren Fensterrand - je nach `nachUnten`. */
+  y: number;
+  nachUnten: boolean;
+};
 
 /**
  * Eine anklickbare Belegnummer mit Vorschau der zitierten Stelle.
@@ -25,67 +42,104 @@ export function CitationChip({
   citation: Citation;
   onOpen: (citation: Citation) => void;
 }) {
-  const [zeigeVorschau, setZeigeVorschau] = useState(false);
-  const [nachUnten, setNachUnten] = useState(false);
+  const [position, setPosition] = useState<Vorschauposition | null>(null);
   const chipRef = useRef<HTMLButtonElement>(null);
 
   /**
-   * Entscheidet, auf welcher Seite die Vorschau aufgeht.
+   * Misst aus, wo die Vorschau aufgehen darf.
    *
-   * Der Chat liegt in einem scrollbaren Bereich. Eine Vorschau über einem Chip
-   * am oberen Rand wird an dessen Kante abgeschnitten - gemessen waren das
-   * 172 fehlende Pixel. Ist oben zu wenig Platz, klappt sie deshalb nach unten.
+   * Sie hängt nicht am Chip, sondern am Fenster (siehe unten), deshalb sind die
+   * Fenstergrenzen das Maß: oben wird geklappt, seitlich geschoben.
    */
   function oeffnen() {
     const chip = chipRef.current?.getBoundingClientRect();
-    const bereich = chipRef.current?.closest('.overflow-y-auto')?.getBoundingClientRect();
-    const platzOben = chip && bereich ? chip.top - bereich.top : Number.POSITIVE_INFINITY;
+    if (!chip) return;
 
-    setNachUnten(platzOben < VORSCHAU_HOEHE);
-    setZeigeVorschau(true);
+    // Über dem Chip ist die erste Wahl, weil die Vorschau dort den weiteren
+    // Text nicht verdeckt. Reicht der Platz nicht, klappt sie nach unten.
+    const nachUnten = chip.top < VORSCHAU_HOEHE + ABSTAND + RAND;
+
+    // Mittig unter dem Chip, aber nur so weit, wie das Fenster es zulässt. Ein
+    // Chip am Zeilenanfang säße sonst mit halber Vorschau außerhalb des Bildes.
+    const mitte = chip.left + chip.width / 2 - VORSCHAU_BREITE / 2;
+    const rechtesEnde = Math.max(RAND, window.innerWidth - VORSCHAU_BREITE - RAND);
+
+    setPosition({
+      links: Math.min(Math.max(mitte, RAND), rechtesEnde),
+      y: nachUnten ? chip.bottom + ABSTAND : window.innerHeight - chip.top + ABSTAND,
+      nachUnten,
+    });
   }
 
+  // Die Position wird einmal beim Aufklappen gemessen. Scrollt oder springt das
+  // Fenster danach, zeigt sie ins Leere - dann lieber schließen als danebenstehen.
+  useEffect(() => {
+    if (!position) return;
+
+    function schliessen() {
+      setPosition(null);
+    }
+
+    // `true`: der Chat scrollt in einem inneren Bereich, dessen Ereignisse nicht
+    // bis zum Fenster hochblubbern. Nur die Abwärtsphase sieht sie.
+    window.addEventListener('scroll', schliessen, true);
+    window.addEventListener('resize', schliessen);
+    return () => {
+      window.removeEventListener('scroll', schliessen, true);
+      window.removeEventListener('resize', schliessen);
+    };
+  }, [position]);
+
   return (
-    <span className="relative inline-block">
+    <span className="inline-block">
       <button
         ref={chipRef}
         type="button"
         onClick={() => onOpen(citation)}
         onMouseEnter={oeffnen}
-        onMouseLeave={() => setZeigeVorschau(false)}
+        onMouseLeave={() => setPosition(null)}
         // Auch per Tastatur erreichbar: wer sich durchtabbt, sieht dieselbe
         // Vorschau wie mit der Maus.
         onFocus={oeffnen}
-        onBlur={() => setZeigeVorschau(false)}
+        onBlur={() => setPosition(null)}
         aria-label={`Beleg ${citation.marker}: ${citation.sourceTitle}`}
         className="mx-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-100 px-1.5 align-baseline text-xs font-semibold text-sky-800 transition hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500"
       >
         {citation.marker}
       </button>
 
-      {zeigeVorschau && (
-        <span
-          role="tooltip"
-          // `pointer-events-none`: die Vorschau soll den Klick auf den Chip
-          // nicht abfangen, wenn sie unter dem Mauszeiger aufgeht.
-          className={`pointer-events-none absolute left-1/2 z-20 w-72 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-3 text-left shadow-lg ${
-            nachUnten ? 'top-full mt-1.5' : 'bottom-full mb-1.5'
-          }`}
-        >
-          <span className="block truncate text-xs font-semibold text-slate-900">
-            {citation.sourceTitle}
-          </span>
-          {citation.page !== null && (
-            <span className="block text-[11px] text-slate-500">Seite {citation.page}</span>
-          )}
-          <span className="mt-1.5 block whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-700">
-            {citation.snippet}
-          </span>
-          <span className="mt-1.5 block text-[11px] text-sky-700">
-            Klicken, um die Stelle im Dokument zu öffnen
-          </span>
-        </span>
-      )}
+      {position !== null &&
+        // Die Vorschau hängt am Dokument, nicht am Chip: der Chat liegt in einem
+        // scrollbaren Bereich, und der schneidet alles ab, was über seine Kanten
+        // hinausragt - eine Vorschau am linken Spaltenrand verschwand dadurch
+        // hinter der Quellenspalte. Am Dokument gibt es keine solche Kante mehr.
+        createPortal(
+          <span
+            role="tooltip"
+            style={{
+              left: position.links,
+              width: VORSCHAU_BREITE,
+              ...(position.nachUnten ? { top: position.y } : { bottom: position.y }),
+            }}
+            // `pointer-events-none`: die Vorschau soll den Klick auf den Chip
+            // nicht abfangen, wenn sie unter dem Mauszeiger aufgeht.
+            className="pointer-events-none fixed z-50 rounded-lg border border-slate-200 bg-white p-3 text-left shadow-lg"
+          >
+            <span className="block truncate text-xs font-semibold text-slate-900">
+              {citation.sourceTitle}
+            </span>
+            {citation.page !== null && (
+              <span className="block text-[11px] text-slate-500">Seite {citation.page}</span>
+            )}
+            <span className="mt-1.5 block whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-700">
+              {citation.snippet}
+            </span>
+            <span className="mt-1.5 block text-[11px] text-sky-700">
+              Klicken, um die Stelle im Dokument zu öffnen
+            </span>
+          </span>,
+          document.body,
+        )}
     </span>
   );
 }
