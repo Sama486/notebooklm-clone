@@ -505,7 +505,7 @@ erklärbare Fehlermeldung statt eines Verbindungsabbruchs aus einer Zwischenschi
 - **Keine Leichen.** Kein auskommentierter Code, keine `TODO`s, keine `console.log`-Reste — ein
   zentrales Logging-Modul ([`logger.ts`](server/src/logger.ts)) statt verstreuter Ausgaben.
 
-### Tests: 196, dort wo die Fehler sitzen
+### Tests: 214 im Server, 10 im Frontend — dort wo die Fehler sitzen
 
 | Bereich | Datei |
 |---|---|
