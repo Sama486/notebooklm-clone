@@ -93,11 +93,12 @@ docker exec notebooklm-clone-postgres psql -U notebooklm -d notebooklm \
 ```bash
 cd server
 npx tsc --noEmit    # muss still bleiben
-npm test            # 196 Tests
+npm test            # 228 Tests
 npm run measure     # Messung der Ähnlichkeitssuche (Tabelle weiter unten)
 
 cd ../web
 npx tsc --noEmit
+npm test            # 10 Tests
 ```
 
 Es gibt **eine** `.env`, im Wurzelverzeichnis, für Server und Frontend gemeinsam. Vite liest sie
@@ -505,7 +506,10 @@ erklärbare Fehlermeldung statt eines Verbindungsabbruchs aus einer Zwischenschi
 - **Keine Leichen.** Kein auskommentierter Code, keine `TODO`s, keine `console.log`-Reste — ein
   zentrales Logging-Modul ([`logger.ts`](server/src/logger.ts)) statt verstreuter Ausgaben.
 
-### Tests: 214 im Server, 10 im Frontend — dort wo die Fehler sitzen
+### Tests: 228 im Server, 10 im Frontend — dort wo die Fehler sitzen
+
+Alle neunzehn Testdateien des Servers, damit die Zahl oben nachrechenbar ist und nicht geglaubt
+werden muss:
 
 | Bereich | Datei |
 |---|---|
@@ -517,13 +521,17 @@ erklärbare Fehlermeldung statt eines Verbindungsabbruchs aus einer Zwischenschi
 | Registrierung, Anmeldung, Konten-Aufzählung | [`auth/auth.test.ts`](server/src/auth/auth.test.ts) |
 | SSRF: die vier Fälle | [`net/safeFetch.test.ts`](server/src/net/safeFetch.test.ts) |
 | SSRF: Adressbereiche, IPv6-verpackte IPv4 | [`net/privateAddress.test.ts`](server/src/net/privateAddress.test.ts) |
-| Prompt Injection | [`chat/prompt.test.ts`](server/src/chat/prompt.test.ts) |
+| Prompt Injection als reine Funktion | [`chat/prompt.test.ts`](server/src/chat/prompt.test.ts) |
+| Chat-Endpunkt: Belege, Verlauf ohne alte Nummern, Injektion durch ein Dokument | [`chat/chat.test.ts`](server/src/chat/chat.test.ts) |
 | Marker-Erkennung im Stream | [`chat/markerScrubber.test.ts`](server/src/chat/markerScrubber.test.ts) |
 | Zerlegung mit Zeichen-Positionen, Satzerkennung | [`ingest/chunk.test.ts`](server/src/ingest/chunk.test.ts) |
 | Beleg-Ausschnitt ohne Schnitt im Wort | [`chat/snippet.test.ts`](server/src/chat/snippet.test.ts) |
 | Ähnlichkeitsberechnung | [`chat/similarity.test.ts`](server/src/chat/similarity.test.ts) |
-| Einlesen, Fehlerpfade, Wiederholbarkeit | [`sources/sources.test.ts`](server/src/sources/sources.test.ts) |
+| Einlesen über die Endpunkte, Grenzen, Magic Bytes | [`sources/sources.test.ts`](server/src/sources/sources.test.ts) |
+| Einlesen: Fehlerpfade, Wiederholbarkeit, Embedding-Cache | [`ingest/ingestSource.test.ts`](server/src/ingest/ingestSource.test.ts) |
 | PDF- und HTML-Extraktion | [`sources/extractPdf.test.ts`](server/src/sources/extractPdf.test.ts), [`sources/extractHtml.test.ts`](server/src/sources/extractHtml.test.ts) |
+| Zusammensetzen der PDF-Textstücke (gesperrte Überschriften) | [`sources/joinTextItems.test.ts`](server/src/sources/joinTextItems.test.ts) |
+| Frontend: Markdown-Export, Marker-Positionen, Dateiname ohne Pfadanteile | [`lib/exportChat.test.ts`](web/src/lib/exportChat.test.ts) |
 
 **Kein Test ruft je eine echte KI-API auf.** Das Modell steckt hinter einem Interface
 ([`ai/types.ts`](server/src/ai/types.ts)); die Tests laufen gegen ein deterministisches Test-Double
